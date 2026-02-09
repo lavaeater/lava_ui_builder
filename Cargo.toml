@@ -11,3 +11,6 @@ feathers = []
 
 [dependencies]
 bevy = { version = "0.18.0", default-features = false, features = ["ui", "experimental_bevy_feathers"] }
+
+[lints.clippy]
+too_many_arguments = "allow"

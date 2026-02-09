@@ -723,7 +723,7 @@ impl UiBuilderDefaults {
                 def.justify_content = input.justify_content.unwrap_or(def.justify_content);
                 def.align_items = input.align_items.unwrap_or(def.align_items);
                 def.border_color = input.border_color.unwrap_or(def.border_color);
-                def.border_radius = input.border_radius.unwrap_or(def.border_radius).clone();
+                def.border_radius = input.border_radius.unwrap_or(def.border_radius);
                 def.bg_color = input.bg_color.unwrap_or(def.bg_color);
                 def.font_size = input.font_size.unwrap_or(def.font_size);
                 def.text_color = input.text_color.unwrap_or(def.text_color);
@@ -737,7 +737,7 @@ impl UiBuilderDefaults {
                 def.justify_content = internal.justify_content.unwrap_or(def.justify_content);
                 def.align_items = internal.align_items.unwrap_or(def.align_items);
                 def.border_color = internal.border_color.unwrap_or(def.border_color);
-                def.border_radius = internal.border_radius.unwrap_or(def.border_radius).clone();
+                def.border_radius = internal.border_radius.unwrap_or(def.border_radius);
                 def.bg_color = internal.bg_color.unwrap_or(def.bg_color);
                 def.font_size = internal.font_size.unwrap_or(def.font_size);
                 def.text_color = internal.text_color.unwrap_or(def.text_color);

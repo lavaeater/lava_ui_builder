@@ -3,8 +3,8 @@ use bevy::text::{Justify, LineBreak, TextLayout};
 use std::collections::VecDeque;
 
 use crate::{
-    ButtonBuilder, ButtonPartial, Collapsible, CollapseToggleButton,
-    CollapsibleContent, NodePartial, TextBundle, UiBuilderDefaults, UIBuilder,
+    ButtonBuilder, ButtonPartial, CollapseToggleButton, Collapsible,
+    CollapsibleContent, NodePartial, TextBundle, UIBuilder, UiBuilderDefaults,
 };
 
 impl<'w, 's> UIBuilder<'w, 's> {
@@ -580,7 +580,7 @@ impl<'w, 's> UIBuilder<'w, 's> {
     }
 
     pub fn with_component<T: Component + Default>(&mut self) -> &mut Self {
-        self.commands.entity(self.current_entity).entry::<T>().or_insert(T::default());
+        self.commands.entity(self.current_entity).entry::<T>().or_default();
         self
     }
 
@@ -971,8 +971,8 @@ impl<'w, 's> UIBuilder<'w, 's> {
         let layout = TextLayout::new(
             justify.unwrap_or(
                 self.defaults.text_justify
-                    .unwrap_or(Justify::default())), 
-                line_break.unwrap_or(self.defaults.text_line_break.unwrap_or(LineBreak::default())));
+                    .unwrap_or_default()), 
+                line_break.unwrap_or(self.defaults.text_line_break.unwrap_or_default()));
 
         let text_bundle = (
             Text::new(text.into()),
@@ -1012,6 +1012,7 @@ impl<'w, 's> UIBuilder<'w, 's> {
         }
     }
 
+#[allow(clippy::too_many_arguments)]
     pub fn add_button<T: Component>(
         &mut self,
         text: impl Into<String>,
@@ -1031,7 +1032,8 @@ impl<'w, 's> UIBuilder<'w, 's> {
                 .border_radius_all_px(border_radius);
         })
     }
-
+    
+    #[allow(clippy::too_many_arguments)]
     pub fn add_button_with<B: Bundle>(
         &mut self,
         text: impl Into<String>,
