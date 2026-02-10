@@ -25,3 +25,7 @@ path = "examples/basic_layout.rs"
 [[example]]
 name = "buttons"
 path = "examples/buttons.rs"
+
+[[example]]
+name = "complex_example"
+path = "examples/complex_example.rs"

@@ -228,6 +228,26 @@ impl<'w, 's> UIBuilder<'w, 's> {
         self.modify_node(move |mut n| n.border_radius = BorderRadius::all(Val::Px(v)))
     }
 
+    pub fn flex_dir_row(&mut self) -> &mut Self { self.flex_row() }
+    pub fn flex_dir_column(&mut self) -> &mut Self { self.flex_column() }
+
+    pub fn flex_wrap(&mut self) -> &mut Self {
+        self.modify_node(move |mut n| n.flex_wrap = FlexWrap::Wrap)
+    }
+
+    pub fn with_overflow(&mut self, overflow: Overflow) -> &mut Self {
+        self.modify_node(move |mut n| n.overflow = overflow)
+    }
+    pub fn overflow_scroll_y(&mut self) -> &mut Self { self.with_overflow(Overflow::scroll_y()) }
+
+    pub fn justify_start(&mut self) -> &mut Self {
+        self.justify_content(JustifyContent::FlexStart)
+    }
+
+    pub fn with_flex_shrink(&mut self, shrink: f32) -> &mut Self {
+        self.modify_node(move |mut n| n.flex_shrink = shrink)
+    }
+
     // ========================================================================
     // Colors
     // ========================================================================
