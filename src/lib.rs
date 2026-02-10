@@ -8,6 +8,7 @@ use bevy::prelude::*;
 
 mod builder;
 mod button_builder;
+pub mod systems;
 
 // Re-export feathers types for external use
 pub use bevy::feathers::controls::{button as feathers_button_fn, ButtonProps, ButtonVariant};
@@ -317,4 +318,27 @@ pub struct CollapseToggleButton {
 #[derive(Component)]
 pub struct CollapsibleContent {
     pub parent: Entity,
+}
+
+// ============================================================================
+// Plugin
+// ============================================================================
+
+/// Plugin that registers generic UI systems for collapsible sections,
+/// scroll handling, and interaction palette color changes.
+/// Add this plugin to your app to get these systems automatically.
+pub struct LavaUiPlugin;
+
+impl Plugin for LavaUiPlugin {
+    fn build(&self, app: &mut App) {
+        app.add_systems(
+            Update,
+            (
+                systems::handle_scroll_input,
+                systems::handle_collapse_toggle,
+                systems::update_collapsible_visibility,
+                systems::apply_interaction_palette,
+            ),
+        );
+    }
 }

@@ -172,6 +172,7 @@ impl<'w, 's> UIBuilder<'w, 's> {
     }
     pub fn width_px(&mut self, w: f32) -> &mut Self { self.width(Val::Px(w)) }
     pub fn width_percent(&mut self, w: f32) -> &mut Self { self.width(Val::Percent(w)) }
+    pub fn width_auto(&mut self) -> &mut Self { self.width(Val::Auto) }
 
     pub fn height(&mut self, height: Val) -> &mut Self {
         self.modify_node(move |mut n| n.height = height)
@@ -181,6 +182,7 @@ impl<'w, 's> UIBuilder<'w, 's> {
 
     pub fn size_px(&mut self, w: f32, h: f32) -> &mut Self { self.width_px(w).height_px(h) }
     pub fn size_percent(&mut self, w: f32, h: f32) -> &mut Self { self.width_percent(w).height_percent(h) }
+    pub fn size(&mut self, w: Val, h: Val) -> &mut Self { self.width(w).height(h) }
 
     pub fn flex_direction(&mut self, dir: FlexDirection) -> &mut Self {
         self.modify_node(move |mut n| n.flex_direction = dir)
@@ -207,6 +209,9 @@ impl<'w, 's> UIBuilder<'w, 's> {
         self.modify_node(move |mut n| n.margin = m)
     }
     pub fn margin_all_px(&mut self, v: f32) -> &mut Self { self.margin(UiRect::all(Val::Px(v))) }
+    pub fn margin_btm_px(&mut self, v: f32) -> &mut Self { self.margin(UiRect::bottom(Val::Px(v))) }
+    pub fn margin_zero(&mut self) -> &mut Self { self.margin(UiRect::ZERO) }
+    pub fn padding_zero(&mut self) -> &mut Self { self.padding(UiRect::ZERO) }
 
     pub fn row_gap_px(&mut self, gap: f32) -> &mut Self {
         self.modify_node(move |mut n| n.row_gap = Val::Px(gap))
@@ -231,6 +236,12 @@ impl<'w, 's> UIBuilder<'w, 's> {
     pub fn flex_dir_row(&mut self) -> &mut Self { self.flex_row() }
     pub fn flex_dir_column(&mut self) -> &mut Self { self.flex_column() }
 
+    pub fn flex_direction_row(&mut self) -> &mut Self { self.flex_row() }
+
+    pub fn border_all_px(&mut self, width: f32, color: Color) -> &mut Self {
+        self.border(UiRect::all(Val::Px(width)), color)
+    }
+
     pub fn flex_wrap(&mut self) -> &mut Self {
         self.modify_node(move |mut n| n.flex_wrap = FlexWrap::Wrap)
     }
@@ -242,6 +253,9 @@ impl<'w, 's> UIBuilder<'w, 's> {
 
     pub fn justify_start(&mut self) -> &mut Self {
         self.justify_content(JustifyContent::FlexStart)
+    }
+    pub fn justify_space_between(&mut self) -> &mut Self {
+        self.justify_content(JustifyContent::SpaceBetween)
     }
 
     pub fn with_flex_shrink(&mut self, shrink: f32) -> &mut Self {
@@ -351,6 +365,46 @@ impl<'w, 's> UIBuilder<'w, 's> {
 
     pub fn add_centered<F: FnOnce(&mut Self)>(&mut self, f: F) -> &mut Self {
         self.with_child(|ui| { ui.display_flex().justify_center().align_items_center(); f(ui); })
+    }
+
+    /// Add a simple button child with text, size, bg color, font size, border radius, and a marker component.
+    pub fn add_button<T: Component>(
+        &mut self,
+        text: impl Into<String>,
+        width: f32,
+        height: f32,
+        bg_color: Color,
+        font_size: f32,
+        border_radius: f32,
+        component: T,
+    ) -> &mut Self {
+        self.with_child(|ui| {
+            ui.insert(Button)
+                .insert(component)
+                .width_px(width)
+                .height_px(height)
+                .bg_color(bg_color)
+                .border_radius_all_px(border_radius)
+                .display_flex()
+                .justify_center()
+                .align_items_center();
+            ui.add_text_child(text, None, Some(font_size), None);
+        })
+    }
+
+    /// Spawn a child with text and a fixed width.
+    pub fn text_with_width(&mut self, text: impl Into<String>, width: f32) -> &mut Self {
+        self.with_child(|ui| {
+            ui.width_px(width).default_text(text);
+        })
+    }
+
+    /// Spawn a child with text, run a closure on it, then return to parent.
+    pub fn build_text_child<F: FnOnce(&mut Self)>(&mut self, text: impl Into<String>, f: F) -> &mut Self {
+        self.with_child(|ui| {
+            ui.default_text(text);
+            f(ui);
+        })
     }
 
     // ========================================================================
