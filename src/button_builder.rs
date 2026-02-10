@@ -1,5 +1,5 @@
-use bevy::ecs::system::IntoObserverSystem;
 use bevy::ecs::spawn::Spawn;
+use bevy::ecs::system::IntoObserverSystem;
 use bevy::prelude::*;
 
 use bevy::feathers::controls::{button, ButtonProps, ButtonVariant};
@@ -10,18 +10,14 @@ use bevy::ui_widgets::Activate;
 
 use crate::{ButtonBuilder, UIBuilder};
 
+// ============================================================================
+// ButtonBuilder — for imperative button customization via add_themed_button()
+// ============================================================================
+
 impl<'a, 'w, 's> ButtonBuilder<'a, 'w, 's> {
     pub fn text(&mut self, text: impl Into<String>) -> &mut Self {
         if let Some(text_entity) = self.text_entity {
             self.ui.commands.entity(text_entity).insert(Text::new(text.into()));
-        }
-        self
-    }
-
-    pub fn font(&mut self, font: Handle<Font>) -> &mut Self {
-        if let Some(text_entity) = self.text_entity {
-            self.ui.commands.entity(text_entity).entry::<TextFont>()
-                .and_modify(move |mut tf| { tf.font = font.clone(); });
         }
         self
     }
@@ -41,23 +37,17 @@ impl<'a, 'w, 's> ButtonBuilder<'a, 'w, 's> {
         self
     }
 
-    pub fn width(&mut self, width: Val) -> &mut Self {
+    pub fn width_px(&mut self, width: f32) -> &mut Self {
         self.ui.commands.entity(self.ui.current_entity).entry::<Node>()
-            .and_modify(move |mut n| { n.width = width; });
+            .and_modify(move |mut n| { n.width = Val::Px(width); });
         self
     }
 
-    pub fn width_px(&mut self, width: f32) -> &mut Self { self.width(Val::Px(width)) }
-    pub fn width_percent(&mut self, width: f32) -> &mut Self { self.width(Val::Percent(width)) }
-
-    pub fn height(&mut self, height: Val) -> &mut Self {
+    pub fn height_px(&mut self, height: f32) -> &mut Self {
         self.ui.commands.entity(self.ui.current_entity).entry::<Node>()
-            .and_modify(move |mut n| { n.height = height; });
+            .and_modify(move |mut n| { n.height = Val::Px(height); });
         self
     }
-
-    pub fn height_px(&mut self, height: f32) -> &mut Self { self.height(Val::Px(height)) }
-    pub fn height_percent(&mut self, height: f32) -> &mut Self { self.height(Val::Percent(height)) }
 
     pub fn size_px(&mut self, width: f32, height: f32) -> &mut Self {
         self.width_px(width).height_px(height)
@@ -68,60 +58,11 @@ impl<'a, 'w, 's> ButtonBuilder<'a, 'w, 's> {
         self
     }
 
-    pub fn border(&mut self, border: UiRect) -> &mut Self {
-        self.ui.commands.entity(self.ui.current_entity).entry::<Node>()
-            .and_modify(move |mut n| { n.border = border; });
-        self
-    }
-
-    pub fn border_all_px(&mut self, width: f32) -> &mut Self { self.border(UiRect::all(Val::Px(width))) }
-
-    pub fn border_color(&mut self, color: Color) -> &mut Self {
-        self.ui.commands.entity(self.ui.current_entity).insert(BorderColor::all(color));
-        self
-    }
-
-    pub fn border_radius(&mut self, radius: BorderRadius) -> &mut Self {
-        self.ui.commands.entity(self.ui.current_entity).entry::<Node>()
-            .and_modify(move |mut n| { n.border_radius = radius; });
-        self
-    }
-
     pub fn border_radius_all_px(&mut self, radius: f32) -> &mut Self {
-        self.border_radius(BorderRadius::all(Val::Px(radius)))
-    }
-
-    pub fn border_radius_all_percent(&mut self, radius: f32) -> &mut Self {
-        self.border_radius(BorderRadius::all(Val::Percent(radius)))
-    }
-
-    pub fn justify_content(&mut self, justify: JustifyContent) -> &mut Self {
         self.ui.commands.entity(self.ui.current_entity).entry::<Node>()
-            .and_modify(move |mut n| { n.justify_content = justify; });
+            .and_modify(move |mut n| { n.border_radius = BorderRadius::all(Val::Px(radius)); });
         self
     }
-
-    pub fn align_items(&mut self, align: AlignItems) -> &mut Self {
-        self.ui.commands.entity(self.ui.current_entity).entry::<Node>()
-            .and_modify(move |mut n| { n.align_items = align; });
-        self
-    }
-
-    pub fn padding(&mut self, padding: UiRect) -> &mut Self {
-        self.ui.commands.entity(self.ui.current_entity).entry::<Node>()
-            .and_modify(move |mut n| { n.padding = padding; });
-        self
-    }
-
-    pub fn padding_all_px(&mut self, value: f32) -> &mut Self { self.padding(UiRect::all(Val::Px(value))) }
-
-    pub fn margin(&mut self, margin: UiRect) -> &mut Self {
-        self.ui.commands.entity(self.ui.current_entity).entry::<Node>()
-            .and_modify(move |mut n| { n.margin = margin; });
-        self
-    }
-
-    pub fn margin_all_px(&mut self, value: f32) -> &mut Self { self.margin(UiRect::all(Val::Px(value))) }
 
     pub fn insert<T: Component>(&mut self, component: T) -> &mut Self {
         self.ui.commands.entity(self.ui.current_entity).insert(component);
@@ -145,13 +86,6 @@ impl<'a, 'w, 's> ButtonBuilder<'a, 'w, 's> {
 
 impl<'w, 's> UIBuilder<'w, 's> {
     /// Add a Feathers-style button with an observer for the Activate event.
-    /// 
-    /// # Example
-    /// ```ignore
-    /// ui.feathers_button("Click Me", |_: On<Activate>, mut commands: Commands| {
-    ///     info!("Button clicked!");
-    /// });
-    /// ```
     pub fn feathers_button<M>(
         &mut self,
         text: impl Into<String>,
@@ -161,16 +95,6 @@ impl<'w, 's> UIBuilder<'w, 's> {
     }
 
     /// Add a Feathers-style button with custom props and an observer.
-    /// 
-    /// # Example
-    /// ```ignore
-    /// ui.feathers_button_with_props(
-    ///     "Primary",
-    ///     ButtonProps { variant: ButtonVariant::Primary, ..default() },
-    ///     (),
-    ///     |_: On<Activate>| { info!("Clicked!"); }
-    /// );
-    /// ```
     pub fn feathers_button_with_props<B, M>(
         &mut self,
         text: impl Into<String>,
@@ -188,7 +112,6 @@ impl<'w, 's> UIBuilder<'w, 's> {
         self.child();
         let button_entity = self.current_entity;
 
-        // Spawn the Feathers button bundle with observer
         let button_bundle = button(
             props,
             extra_components,
@@ -200,7 +123,6 @@ impl<'w, 's> UIBuilder<'w, 's> {
             .insert(button_bundle)
             .observe(handler);
 
-        // Restore state
         self.current_entity = original_entity;
         while self.parent_stack.len() > original_stack_len {
             self.parent_stack.pop_back();
@@ -236,13 +158,6 @@ impl<'w, 's> UIBuilder<'w, 's> {
     }
 
     /// Add a Feathers-style button with a marker component and an observer.
-    /// 
-    /// # Example
-    /// ```ignore
-    /// ui.feathers_button_marked("Save", SaveButton, |_: On<Activate>| {
-    ///     info!("Save clicked!");
-    /// });
-    /// ```
     pub fn feathers_button_marked<T, M>(
         &mut self,
         text: impl Into<String>,
@@ -272,5 +187,4 @@ impl<'w, 's> UIBuilder<'w, 's> {
             handler,
         )
     }
-
 }
