@@ -135,7 +135,7 @@ impl<'w, 's> UIBuilder<'w, 's> {
     }
 
     /// Insert a default component on the current entity.
-    pub fn with_component<T: Component + Default>(&mut self) -> &mut Self {
+    pub fn component<T: Component + Default>(&mut self) -> &mut Self {
         self.commands.entity(self.current_entity).entry::<T>().or_default();
         self
     }

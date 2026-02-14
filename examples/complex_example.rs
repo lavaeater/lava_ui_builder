@@ -193,7 +193,7 @@ fn setup_trade_ui(
 ) {
     let mut ui = UIBuilder::new(commands, Some(theme.clone()));
 
-    ui.with_component::<TradeCardUiRoot>().set_node(Node {
+    ui.component::<TradeCardUiRoot>().set_node(Node {
         width: Val::Percent(100.0),
         height: Val::Percent(100.0),
         flex_direction: FlexDirection::Row,
@@ -205,7 +205,7 @@ fn setup_trade_ui(
     // ── Left side: Collapsible Trade Cards ────────────────────────────
     ui.add_collapsible("Trade Cards", |cards_section| {
         cards_section
-            .with_component::<TradeCardList>()
+            .component::<TradeCardList>()
             .width_px(340.0)
             .height_px(500.0)
             .bg_color(Color::srgba(0.1, 0.1, 0.1, 0.7))
@@ -236,7 +236,7 @@ fn setup_trade_ui(
         );
         info.with_child(|state| {
             state
-                .with_component::<GameStateDisplay>()
+                .component::<GameStateDisplay>()
                 .width_percent(100.0)
                 .display_flex()
                 .flex_dir_column()
@@ -274,7 +274,7 @@ fn setup_trade_ui(
             Some(Color::srgb(1.0, 0.8, 0.0)),
         );
         info.with_child(|list| {
-            list.with_component::<PlayerActivityListContainer>()
+            list.component::<PlayerActivityListContainer>()
                 .width_percent(100.0)
                 .height_px(300.0)
                 .display_flex()
