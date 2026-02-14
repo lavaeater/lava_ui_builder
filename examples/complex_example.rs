@@ -194,8 +194,8 @@ fn setup_trade_ui(
     let mut ui = UIBuilder::new(commands, Some(theme.clone()));
 
     ui.component::<TradeCardUiRoot>().set_node(Node {
-        width: Val::Percent(100.0),
-        height: Val::Percent(100.0),
+        width: percent(100.0),
+        height: percent(100.0),
         flex_direction: FlexDirection::Row,
         padding: UiRect::all(Val::Px(8.0)),
         column_gap: Val::Px(8.0),

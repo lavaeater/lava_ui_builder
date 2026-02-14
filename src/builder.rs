@@ -159,7 +159,17 @@ impl<'w, 's> UIBuilder<'w, 's> {
     // ========================================================================
     // Convenience layout setters (kept slim — only the most-used ones)
     // ========================================================================
-
+    
+    pub fn absolute_position(&mut self) -> &mut Self {
+        self.modify_node(move |mut n| n.position_type = PositionType::Absolute)
+    }
+    
+    pub fn bottom(&mut self, bottom: Val) -> &mut Self {
+        self.modify_node(move |mut n| n.bottom = bottom)
+    }
+    pub fn left(&mut self, left: Val) -> &mut Self {
+        self.modify_node(move |mut n| n.left = left)
+    }
     pub fn display(&mut self, display: Display) -> &mut Self {
         self.modify_node(move |mut n| n.display = display)
     }
@@ -204,20 +214,39 @@ impl<'w, 's> UIBuilder<'w, 's> {
         self.modify_node(move |mut n| n.padding = p)
     }
     pub fn padding_all_px(&mut self, v: f32) -> &mut Self { self.padding(UiRect::all(Val::Px(v))) }
+    pub fn padding_all(&mut self, v:Val) -> &mut Self { self.padding(UiRect::all(v)) }
 
     pub fn margin(&mut self, m: UiRect) -> &mut Self {
         self.modify_node(move |mut n| n.margin = m)
     }
     pub fn margin_all_px(&mut self, v: f32) -> &mut Self { self.margin(UiRect::all(Val::Px(v))) }
     pub fn margin_btm_px(&mut self, v: f32) -> &mut Self { self.margin(UiRect::bottom(Val::Px(v))) }
+    pub fn margin_btm(&mut self, v: Val) -> &mut Self { self.modify_node(move |mut n| n.margin.bottom = v) }
+    pub fn margin_top(&mut self, v: Val) -> &mut Self { self.modify_node(move |mut n| n.margin.top = v) }
+    pub fn margin_left(&mut self, v: Val) -> &mut Self { self.modify_node(move |mut n| n.margin.left = v) }
+    pub fn margin_right(&mut self, v: Val) -> &mut Self { self.modify_node(move |mut n| n.margin.right = v) }
+    pub fn margin_all(&mut self, v: Val) -> &mut Self { self.modify_node(move |mut n| n.margin = UiRect::all(v)) } 
     pub fn margin_zero(&mut self) -> &mut Self { self.margin(UiRect::ZERO) }
     pub fn padding_zero(&mut self) -> &mut Self { self.padding(UiRect::ZERO) }
 
     pub fn row_gap_px(&mut self, gap: f32) -> &mut Self {
         self.modify_node(move |mut n| n.row_gap = Val::Px(gap))
     }
+    
     pub fn column_gap_px(&mut self, gap: f32) -> &mut Self {
         self.modify_node(move |mut n| n.column_gap = Val::Px(gap))
+    }
+    
+    pub fn column_gap(&mut self, gap: Val) -> &mut Self {
+        self.modify_node(move |mut n| n.column_gap = gap)
+    }
+    
+    pub fn row_gap(&mut self, gap: Val)-> &mut Self {
+        self.modify_node(move |mut n| n.row_gap = gap)
+    }
+    
+    pub fn gap(&mut self, col_gap: Val, row_gap: Val    ) -> &mut Self {
+        self.modify_node(move |mut n| { n.row_gap = row_gap; n.column_gap = col_gap; })
     }
     pub fn gap_px(&mut self, gap: f32) -> &mut Self {
         self.modify_node(move |mut n| { n.row_gap = Val::Px(gap); n.column_gap = Val::Px(gap); })
@@ -533,3 +562,4 @@ impl<'w, 's> UIBuilder<'w, 's> {
         self.with_collapsible(label, true, f)
     }
 }
+

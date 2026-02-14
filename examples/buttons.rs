@@ -141,6 +141,7 @@ fn setup_ui(mut commands: Commands, theme: Res<UiTheme>) {
 
     ui.feathers_button("Default", |_activate: On<Activate>| {
         info!("Feathers default button activated");
+        external_function();
     });
 
     ui.feathers_button_primary("Primary", |_activate: On<Activate>| {
@@ -152,6 +153,10 @@ fn setup_ui(mut commands: Commands, theme: Res<UiTheme>) {
     });
 
     ui.build();
+}
+
+fn external_function() {
+    info!("I was called");
 }
 
 // ── Runtime system: apply InteractionPalette colors on hover/press ───────
