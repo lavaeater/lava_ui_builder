@@ -241,6 +241,10 @@ impl<'w, 's> UIBuilder<'w, 's> {
     pub fn border_all_px(&mut self, width: f32, color: Color) -> &mut Self {
         self.border(UiRect::all(Val::Px(width)), color)
     }
+    
+    pub fn border_all(&mut self, width: Val, color: Color) -> &mut Self {
+        self.border(UiRect::all(width), color)
+    }
 
     pub fn flex_wrap(&mut self) -> &mut Self {
         self.modify_node(move |mut n| n.flex_wrap = FlexWrap::Wrap)
