@@ -608,6 +608,11 @@ impl<'w, 's> UIBuilder<'w, 's> {
         }
         self
     }
+    
+    pub fn z_index(&mut self, z_index: i32) -> &mut Self {
+        self.commands.entity(self.current_entity).insert(ZIndex(z_index));
+        self
+    }
 
     pub fn add_button_observe<M, F>(
         &mut self,
