@@ -1,4 +1,7 @@
-use crate::{ButtonBuilder, ButtonVariant, CollapseToggleButton, Collapsible, CollapsibleContent, InteractionPalette, LavaTheme, UIBuilder};
+use crate::{
+    ButtonBuilder, ButtonVariant, CollapseToggleButton, Collapsible, CollapsibleContent,
+    InteractionPalette, LavaTheme, UIBuilder,
+};
 use bevy::ecs::system::IntoObserverSystem;
 use bevy::feathers::cursor::EntityCursor;
 use bevy::feathers::font_styles::InheritableFont;
@@ -606,13 +609,79 @@ impl<'w, 's> UIBuilder<'w, 's> {
         self
     }
 
+    pub fn add_button_observe<M, F>(
+        &mut self,
+        text: impl Into<String>,
+        f: F,
+        handler: impl IntoObserverSystem<Activate, (), M>,
+    ) -> &mut Self
+    where
+        F: FnOnce(&mut ButtonBuilder),
+    {
+        let original_entity = self.current_entity;
+        let original_stack_len = self.parent_stack.len();
+
+        self.child();
+        let button_entity = self.current_entity;
+
+        let button_theme = &self.theme.button;
+
+        self.commands.entity(button_entity).insert((
+            Node::default(),
+            BackgroundColor(self.theme.bg_color),
+            InteractionPalette {
+                hovered: button_theme.bg_hovered,
+                pressed: button_theme.bg_pressed,
+                none: button_theme.bg,
+            },
+            Hovered::default(),
+            WidgetsButton,
+            ButtonVariant::Normal,
+            EntityCursor::System(SystemCursorIcon::Pointer),
+            TabIndex(0),
+            // InheritableFont {
+            //     font: HandleOrPath::Handle(btn.font.clone()),
+            //     font_size: btn.font_size,
+            // },
+        ));
+
+        let text_entity = self
+            .commands
+            .spawn((
+                Text::new(text),
+                TextFont::default()
+                    .with_font(button_theme.font.clone())
+                    .with_font_size(button_theme.font_size),
+                TextColor(button_theme.text_color),
+            ))
+            .id();
+        self.commands.entity(button_entity).add_child(text_entity);
+        self.commands.entity(button_entity).observe(handler);
+        let mut button_builder = ButtonBuilder {
+            ui: self,
+            text_entity: Some(text_entity),
+        };
+        let result =
+            std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| f(&mut button_builder)));
+
+        self.current_entity = original_entity;
+        while self.parent_stack.len() > original_stack_len {
+            self.parent_stack.pop_back();
+        }
+        if let Err(payload) = result {
+            std::panic::resume_unwind(payload);
+        }
+        self
+    }
+
     /// Add a themed button as a child. Returns to the parent after the closure.
     pub fn add_themed_button_observe<M, F>(
         &mut self,
         f: F,
         handler: impl IntoObserverSystem<Activate, (), M>,
     ) -> &mut Self
-    where F: FnOnce(&mut ButtonBuilder)
+    where
+        F: FnOnce(&mut ButtonBuilder),
     {
         let original_entity = self.current_entity;
         let original_stack_len = self.parent_stack.len();
@@ -650,9 +719,7 @@ impl<'w, 's> UIBuilder<'w, 's> {
             .insert(BackgroundColor(bg))
             .insert(palette);
 
-        self.commands
-            .entity(button_entity)
-            .insert((
+        self.commands.entity(button_entity).insert((
             Hovered::default(),
             WidgetsButton,
             ButtonVariant::Normal,
@@ -664,11 +731,9 @@ impl<'w, 's> UIBuilder<'w, 's> {
             },
         ));
 
-
         let text_entity = self.commands.spawn(text_bundle).id();
         self.commands.entity(button_entity).add_child(text_entity);
-        self.commands.entity(button_entity)
-            .observe(handler);
+        self.commands.entity(button_entity).observe(handler);
         let mut button_builder = ButtonBuilder {
             ui: self,
             text_entity: Some(text_entity),

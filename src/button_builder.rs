@@ -53,6 +53,18 @@ impl<'a, 'w, 's> ButtonBuilder<'a, 'w, 's> {
             .and_modify(move |mut n| { n.height = height; });
         self
     }
+    
+    pub fn justify_content(&mut self, justify_content: JustifyContent)-> &mut Self {
+        self.ui.commands.entity(self.ui.current_entity).entry::<Node>()
+            .and_modify(move |mut n| { n.justify_content = justify_content; });
+        self
+    }
+
+    pub fn align_items(&mut self, align_items: AlignItems)-> &mut Self {
+        self.ui.commands.entity(self.ui.current_entity).entry::<Node>()
+            .and_modify(move |mut n| { n.align_items = align_items; });
+        self
+    }
 
     pub fn height_px(&mut self, height: f32) -> &mut Self {
         self.ui.commands.entity(self.ui.current_entity).entry::<Node>()
