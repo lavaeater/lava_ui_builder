@@ -634,8 +634,10 @@ impl<'w, 's> UIBuilder<'w, 's> {
                 justify_content: JustifyContent::Center,
                 align_items: AlignItems::Center,
                 border_radius: button_theme.border_radius,
+                border: UiRect::all(button_theme.border_width),
                 ..default()
             },
+            BorderColor::all(button_theme.border_color),
             BackgroundColor(button_theme.bg),
             InteractionPalette {
                 hovered: button_theme.bg_hovered,
