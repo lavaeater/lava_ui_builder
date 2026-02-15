@@ -4,7 +4,6 @@ use bevy::prelude::*;
 
 use bevy::feathers::controls::{button, ButtonProps, ButtonVariant};
 use bevy::feathers::rounded_corners::RoundedCorners;
-use bevy::feathers::theme::ThemedText;
 use bevy::ui::InteractionDisabled;
 use bevy::ui_widgets::Activate;
 
@@ -133,7 +132,7 @@ impl<'w, 's> UIBuilder<'w, 's> {
         let button_bundle = button(
             props,
             overrides,
-            Spawn((Text::new(text_str), ThemedText)),
+            Spawn(Text::new(text_str)),
         );
         
         self.commands

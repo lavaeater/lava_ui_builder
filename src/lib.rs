@@ -14,7 +14,6 @@ pub mod systems;
 pub use bevy::feathers::controls::{button as feathers_button_fn, ButtonProps, ButtonVariant};
 pub use bevy::feathers::rounded_corners::RoundedCorners;
 pub use bevy::feathers::theme::ThemedText;
-use bevy::feathers::FeathersPlugins;
 pub use bevy::ui::InteractionDisabled;
 pub use bevy::ui_widgets::Activate;
 
@@ -337,7 +336,6 @@ pub struct LavaUiPlugin;
 impl Plugin for LavaUiPlugin {
     fn build(&self, app: &mut App) {
         app
-            .add_plugins(FeathersPlugins)
             .add_systems(
             Update,
             (

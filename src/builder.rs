@@ -1,7 +1,4 @@
-use crate::{
-    ButtonBuilder, CollapseToggleButton, Collapsible, CollapsibleContent, InteractionPalette,
-    LavaTheme, UIBuilder,
-};
+use crate::{ButtonBuilder, ButtonVariant, CollapseToggleButton, Collapsible, CollapsibleContent, InteractionPalette, LavaTheme, UIBuilder};
 use bevy::ecs::system::IntoObserverSystem;
 use bevy::feathers::cursor::EntityCursor;
 use bevy::feathers::font_styles::InheritableFont;
@@ -10,7 +7,7 @@ use bevy::input_focus::tab_navigation::TabIndex;
 use bevy::picking::hover::Hovered;
 use bevy::prelude::*;
 use bevy::text::{Justify, LineBreak, TextLayout};
-use bevy::ui_widgets::Activate;
+use bevy::ui_widgets::{Activate, Button as WidgetsButton};
 use bevy::window::SystemCursorIcon;
 use std::collections::VecDeque;
 
@@ -584,7 +581,7 @@ impl<'w, 's> UIBuilder<'w, 's> {
         self.commands
             .entity(button_entity)
             .insert(node)
-            .insert(Button)
+            .insert(WidgetsButton)
             .insert(BackgroundColor(bg))
             .insert(palette)
             .insert(component);
@@ -615,8 +612,7 @@ impl<'w, 's> UIBuilder<'w, 's> {
         f: F,
         handler: impl IntoObserverSystem<Activate, (), M>,
     ) -> &mut Self
-    where
-        F: FnOnce(&mut ButtonBuilder),
+    where F: FnOnce(&mut ButtonBuilder)
     {
         let original_entity = self.current_entity;
         let original_stack_len = self.parent_stack.len();
@@ -640,7 +636,7 @@ impl<'w, 's> UIBuilder<'w, 's> {
             pressed: btn.bg_pressed,
         };
         let text_bundle = (
-            Text::default(),
+            Text::new("PLAAAY"),
             TextFont::default()
                 .with_font(btn.font.clone())
                 .with_font_size(btn.font_size),
@@ -650,12 +646,16 @@ impl<'w, 's> UIBuilder<'w, 's> {
         self.commands
             .entity(button_entity)
             .insert(node)
-            .insert(Button)
+            .insert(WidgetsButton)
             .insert(BackgroundColor(bg))
             .insert(palette);
 
-        self.commands.entity(button_entity).insert((
+        self.commands
+            .entity(button_entity)
+            .insert((
             Hovered::default(),
+            WidgetsButton,
+            ButtonVariant::Normal,
             EntityCursor::System(SystemCursorIcon::Pointer),
             TabIndex(0),
             InheritableFont {
@@ -664,11 +664,11 @@ impl<'w, 's> UIBuilder<'w, 's> {
             },
         ));
 
-        self.commands.entity(button_entity).observe(handler);
 
         let text_entity = self.commands.spawn(text_bundle).id();
         self.commands.entity(button_entity).add_child(text_entity);
-
+        self.commands.entity(button_entity)
+            .observe(handler);
         let mut button_builder = ButtonBuilder {
             ui: self,
             text_entity: Some(text_entity),
