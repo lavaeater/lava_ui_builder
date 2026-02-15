@@ -560,8 +560,6 @@ impl<'w, 's> UIBuilder<'w, 's> {
 
         let btn = &self.theme.button;
         let node = Node {
-            width: Val::Px(150.0),
-            height: Val::Px(75.0),
             justify_content: JustifyContent::Center,
             align_items: AlignItems::Center,
             border_radius: btn.border_radius,
@@ -632,8 +630,13 @@ impl<'w, 's> UIBuilder<'w, 's> {
         let button_theme = &self.theme.button;
 
         self.commands.entity(button_entity).insert((
-            Node::default(),
-            BackgroundColor(self.theme.bg_color),
+            Node {
+                justify_content: JustifyContent::Center,
+                align_items: AlignItems::Center,
+                border_radius: button_theme.border_radius,
+                ..default()
+            },
+            BackgroundColor(button_theme.bg),
             InteractionPalette {
                 hovered: button_theme.bg_hovered,
                 pressed: button_theme.bg_pressed,
@@ -644,10 +647,6 @@ impl<'w, 's> UIBuilder<'w, 's> {
             ButtonVariant::Normal,
             EntityCursor::System(SystemCursorIcon::Pointer),
             TabIndex(0),
-            // InheritableFont {
-            //     font: HandleOrPath::Handle(btn.font.clone()),
-            //     font_size: btn.font_size,
-            // },
         ));
 
         let text_entity = self
