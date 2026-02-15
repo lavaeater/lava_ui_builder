@@ -13,7 +13,7 @@ use lava_ui_builder::*;
 fn main() {
     App::new()
         .add_plugins(DefaultPlugins)
-        .insert_resource(UiTheme::default())
+        .insert_resource(LavaTheme::default())
         .add_systems(Startup, (setup_camera, setup_ui))
         .run();
 }
@@ -22,7 +22,7 @@ fn setup_camera(mut commands: Commands) {
     commands.spawn(Camera2d);
 }
 
-fn setup_ui(mut commands: Commands, theme: Res<UiTheme>) {
+fn setup_ui(mut commands: Commands, theme: Res<LavaTheme>) {
     // ── Bundle-function approach ──────────────────────────────────────
     // Use `ui_root` + `children![]` for static, declarative layouts.
     commands.spawn((

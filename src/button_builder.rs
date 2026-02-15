@@ -91,19 +91,21 @@ impl<'w, 's> UIBuilder<'w, 's> {
         text: impl Into<String>,
         handler: impl IntoObserverSystem<Activate, (), M>,
     ) -> &mut Self {
-        self.feathers_button_with_props(text, ButtonProps::default(), (), handler)
+        self.feathers_button_with_overrides(text, ButtonProps::default(), (), handler, |_| {})
     }
 
     /// Add a Feathers-style button with custom props and an observer.
-    pub fn feathers_button_with_props<B, M>(
+    pub fn feathers_button_with_overrides<B, M, F>(
         &mut self,
         text: impl Into<String>,
         props: ButtonProps,
-        extra_components: B,
+        overrides: B,
         handler: impl IntoObserverSystem<Activate, (), M>,
+        f: F,
     ) -> &mut Self
     where
         B: Bundle,
+        F: FnOnce(&mut ButtonBuilder),
     {
         let text_str = text.into();
         let original_entity = self.current_entity;
@@ -111,33 +113,54 @@ impl<'w, 's> UIBuilder<'w, 's> {
 
         self.child();
         let button_entity = self.current_entity;
-
+        let btn = &self.theme.button;
         let button_bundle = button(
             props,
-            extra_components,
+            overrides,
             Spawn((Text::new(text_str), ThemedText)),
         );
+
+        let border_radius = self.theme.button.border_radius;
 
         self.commands
             .entity(button_entity)
             .insert(button_bundle)
-            .observe(handler);
+            .observe(handler)
+            .entry::<Node>()
+            .and_modify(move |mut n| { 
+                n.border_radius = border_radius;
+                
+            });
+
+        let mut button_builder = ButtonBuilder {
+            ui: self,
+            text_entity: None,
+        };
+        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| f(&mut button_builder)));
 
         self.current_entity = original_entity;
         while self.parent_stack.len() > original_stack_len {
             self.parent_stack.pop_back();
         }
 
+        if let Err(payload) = result {
+            std::panic::resume_unwind(payload);
+        }
+
         self
     }
 
     /// Add a Feathers-style primary button with an observer.
-    pub fn feathers_button_primary<M>(
+    pub fn feathers_button_primary<M, F>(
         &mut self,
         text: impl Into<String>,
         handler: impl IntoObserverSystem<Activate, (), M>,
-    ) -> &mut Self {
-        self.feathers_button_with_props(
+        f: F,
+    ) -> &mut Self
+    where
+        F: FnOnce(&mut ButtonBuilder),
+    {
+        self.feathers_button_with_overrides(
             text,
             ButtonProps {
                 variant: ButtonVariant::Primary,
@@ -145,6 +168,7 @@ impl<'w, 's> UIBuilder<'w, 's> {
             },
             (),
             handler,
+            f,
         )
     }
 
@@ -154,7 +178,7 @@ impl<'w, 's> UIBuilder<'w, 's> {
         text: impl Into<String>,
         handler: impl IntoObserverSystem<Activate, (), M>,
     ) -> &mut Self {
-        self.feathers_button_with_props(text, ButtonProps::default(), InteractionDisabled, handler)
+        self.feathers_button_with_overrides(text, ButtonProps::default(), InteractionDisabled, handler, |_| {})
     }
 
     /// Add a Feathers-style button with a marker component and an observer.
@@ -167,7 +191,7 @@ impl<'w, 's> UIBuilder<'w, 's> {
     where
         T: Component,
     {
-        self.feathers_button_with_props(text, ButtonProps::default(), marker, handler)
+        self.feathers_button_with_overrides(text, ButtonProps::default(), marker, handler, |_| {})
     }
 
     /// Add a Feathers-style button with custom rounded corners.
@@ -177,7 +201,7 @@ impl<'w, 's> UIBuilder<'w, 's> {
         corners: RoundedCorners,
         handler: impl IntoObserverSystem<Activate, (), M>,
     ) -> &mut Self {
-        self.feathers_button_with_props(
+        self.feathers_button_with_overrides(
             text,
             ButtonProps {
                 corners,
@@ -185,6 +209,7 @@ impl<'w, 's> UIBuilder<'w, 's> {
             },
             (),
             handler,
+            |_| {},
         )
     }
 }

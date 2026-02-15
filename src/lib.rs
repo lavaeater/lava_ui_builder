@@ -73,14 +73,14 @@ impl Default for TextTheme {
 /// Top-level UI theme resource. Insert this as a `Resource` to configure the look of
 /// bundle-function widgets and the imperative `UIBuilder`.
 #[derive(Resource, Clone, Debug)]
-pub struct UiTheme {
+pub struct LavaTheme {
     pub button: ButtonTheme,
     pub text: TextTheme,
     pub bg_color: Color,
     pub border_color: Color,
 }
 
-impl Default for UiTheme {
+impl Default for LavaTheme {
     fn default() -> Self {
         Self {
             button: ButtonTheme::default(),
@@ -270,7 +270,7 @@ where
 /// For static menus, prefer the bundle-function widgets above with `children![]`.
 pub struct UIBuilder<'w, 's> {
     commands: Commands<'w, 's>,
-    theme: UiTheme,
+    theme: LavaTheme,
     current_entity: Entity,
     parent_stack: VecDeque<Entity>,
 }

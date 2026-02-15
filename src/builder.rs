@@ -4,17 +4,17 @@ use std::collections::VecDeque;
 
 use crate::{
     ButtonBuilder, CollapseToggleButton, Collapsible,
-    CollapsibleContent, InteractionPalette, UIBuilder, UiTheme,
+    CollapsibleContent, InteractionPalette, UIBuilder, LavaTheme,
 };
 
 impl<'w, 's> UIBuilder<'w, 's> {
     /// Get a reference to the UI theme.
-    pub fn theme(&self) -> &UiTheme {
+    pub fn theme(&self) -> &LavaTheme {
         &self.theme
     }
 
     /// Create a new root UI container with a default `Node`.
-    pub fn new(mut commands: Commands<'w, 's>, theme: Option<UiTheme>) -> Self {
+    pub fn new(mut commands: Commands<'w, 's>, theme: Option<LavaTheme>) -> Self {
         let entity = commands.spawn(Node::default()).id();
         Self {
             commands,
@@ -29,7 +29,7 @@ impl<'w, 's> UIBuilder<'w, 's> {
         mut commands: Commands<'w, 's>,
         entity: Entity,
         clear_children: bool,
-        theme: Option<UiTheme>,
+        theme: Option<LavaTheme>,
     ) -> Self {
         if clear_children {
             commands.entity(entity).despawn_related::<Children>();
