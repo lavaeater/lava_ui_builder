@@ -32,6 +32,8 @@ pub struct ButtonTheme {
     pub font: Handle<Font>,
     pub font_size: f32,
     pub border_radius: BorderRadius,
+    pub height: Val,
+    pub width: Val,
 }
 
 impl Default for ButtonTheme {
@@ -44,6 +46,8 @@ impl Default for ButtonTheme {
             font: Default::default(),
             font_size: 40.0,
             border_radius: BorderRadius::MAX,
+            height: px(50.0),
+            width: px(150.0),
         }
     }
 }

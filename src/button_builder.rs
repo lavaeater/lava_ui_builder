@@ -42,6 +42,18 @@ impl<'a, 'w, 's> ButtonBuilder<'a, 'w, 's> {
             .and_modify(move |mut n| { n.width = Val::Px(width); });
         self
     }
+    
+    pub fn width(&mut self, width: Val) -> &mut Self {
+        self.ui.commands.entity(self.ui.current_entity).entry::<Node>()
+            .and_modify(move |mut n| { n.width = width; });
+        self
+    }
+    
+    pub fn height(&mut self, height: Val) -> &mut Self {
+        self.ui.commands.entity(self.ui.current_entity).entry::<Node>()
+            .and_modify(move |mut n| { n.height = height; });
+        self
+    }
 
     pub fn height_px(&mut self, height: f32) -> &mut Self {
         self.ui.commands.entity(self.ui.current_entity).entry::<Node>()
@@ -51,6 +63,10 @@ impl<'a, 'w, 's> ButtonBuilder<'a, 'w, 's> {
 
     pub fn size_px(&mut self, width: f32, height: f32) -> &mut Self {
         self.width_px(width).height_px(height)
+    }
+    
+    pub fn size(&mut self, width: Val, height: Val) -> &mut Self {
+        self.width(width).height(height)
     }
 
     pub fn bg_color(&mut self, color: Color) -> &mut Self {
@@ -113,23 +129,22 @@ impl<'w, 's> UIBuilder<'w, 's> {
 
         self.child();
         let button_entity = self.current_entity;
-        let btn = &self.theme.button;
+        let btn = self.theme.button.clone();
         let button_bundle = button(
             props,
             overrides,
             Spawn((Text::new(text_str), ThemedText)),
         );
-
-        let border_radius = self.theme.button.border_radius;
-
+        
         self.commands
             .entity(button_entity)
             .insert(button_bundle)
             .observe(handler)
             .entry::<Node>()
             .and_modify(move |mut n| { 
-                n.border_radius = border_radius;
-                
+                n.border_radius = btn.border_radius;
+                n.height = btn.height;
+                n.width = btn.width;
             });
 
         let mut button_builder = ButtonBuilder {
@@ -213,3 +228,4 @@ impl<'w, 's> UIBuilder<'w, 's> {
         )
     }
 }
+

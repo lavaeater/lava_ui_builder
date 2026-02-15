@@ -1,11 +1,18 @@
+use crate::{
+    ButtonBuilder, CollapseToggleButton, Collapsible, CollapsibleContent, InteractionPalette,
+    LavaTheme, UIBuilder,
+};
+use bevy::ecs::system::IntoObserverSystem;
+use bevy::feathers::cursor::EntityCursor;
+use bevy::feathers::font_styles::InheritableFont;
+use bevy::feathers::handle_or_path::HandleOrPath;
+use bevy::input_focus::tab_navigation::TabIndex;
+use bevy::picking::hover::Hovered;
 use bevy::prelude::*;
 use bevy::text::{Justify, LineBreak, TextLayout};
+use bevy::ui_widgets::Activate;
+use bevy::window::SystemCursorIcon;
 use std::collections::VecDeque;
-
-use crate::{
-    ButtonBuilder, CollapseToggleButton, Collapsible,
-    CollapsibleContent, InteractionPalette, UIBuilder, LavaTheme,
-};
 
 impl<'w, 's> UIBuilder<'w, 's> {
     /// Get a reference to the UI theme.
@@ -136,7 +143,10 @@ impl<'w, 's> UIBuilder<'w, 's> {
 
     /// Insert a default component on the current entity.
     pub fn component<T: Component + Default>(&mut self) -> &mut Self {
-        self.commands.entity(self.current_entity).entry::<T>().or_default();
+        self.commands
+            .entity(self.current_entity)
+            .entry::<T>()
+            .or_default();
         self
     }
 
@@ -152,18 +162,21 @@ impl<'w, 's> UIBuilder<'w, 's> {
 
     /// Mutate the existing `Node` on the current entity via a closure.
     pub fn modify_node(&mut self, f: impl FnOnce(Mut<Node>) + Send + Sync + 'static) -> &mut Self {
-        self.commands.entity(self.current_entity).entry::<Node>().and_modify(f);
+        self.commands
+            .entity(self.current_entity)
+            .entry::<Node>()
+            .and_modify(f);
         self
     }
 
     // ========================================================================
     // Convenience layout setters (kept slim — only the most-used ones)
     // ========================================================================
-    
+
     pub fn absolute_position(&mut self) -> &mut Self {
         self.modify_node(move |mut n| n.position_type = PositionType::Absolute)
     }
-    
+
     pub fn bottom(&mut self, bottom: Val) -> &mut Self {
         self.modify_node(move |mut n| n.bottom = bottom)
     }
@@ -173,83 +186,141 @@ impl<'w, 's> UIBuilder<'w, 's> {
     pub fn display(&mut self, display: Display) -> &mut Self {
         self.modify_node(move |mut n| n.display = display)
     }
-    pub fn display_flex(&mut self) -> &mut Self { self.display(Display::Flex) }
-    pub fn display_grid(&mut self) -> &mut Self { self.display(Display::Grid) }
-    pub fn display_none(&mut self) -> &mut Self { self.display(Display::None) }
+    pub fn display_flex(&mut self) -> &mut Self {
+        self.display(Display::Flex)
+    }
+    pub fn display_grid(&mut self) -> &mut Self {
+        self.display(Display::Grid)
+    }
+    pub fn display_none(&mut self) -> &mut Self {
+        self.display(Display::None)
+    }
 
     pub fn width(&mut self, width: Val) -> &mut Self {
         self.modify_node(move |mut n| n.width = width)
     }
-    pub fn width_px(&mut self, w: f32) -> &mut Self { self.width(Val::Px(w)) }
-    pub fn width_percent(&mut self, w: f32) -> &mut Self { self.width(Val::Percent(w)) }
-    pub fn width_auto(&mut self) -> &mut Self { self.width(Val::Auto) }
+    pub fn width_px(&mut self, w: f32) -> &mut Self {
+        self.width(Val::Px(w))
+    }
+    pub fn width_percent(&mut self, w: f32) -> &mut Self {
+        self.width(Val::Percent(w))
+    }
+    pub fn width_auto(&mut self) -> &mut Self {
+        self.width(Val::Auto)
+    }
 
     pub fn height(&mut self, height: Val) -> &mut Self {
         self.modify_node(move |mut n| n.height = height)
     }
-    pub fn height_px(&mut self, h: f32) -> &mut Self { self.height(Val::Px(h)) }
-    pub fn height_percent(&mut self, h: f32) -> &mut Self { self.height(Val::Percent(h)) }
+    pub fn height_px(&mut self, h: f32) -> &mut Self {
+        self.height(Val::Px(h))
+    }
+    pub fn height_percent(&mut self, h: f32) -> &mut Self {
+        self.height(Val::Percent(h))
+    }
 
-    pub fn size_px(&mut self, w: f32, h: f32) -> &mut Self { self.width_px(w).height_px(h) }
-    pub fn size_percent(&mut self, w: f32, h: f32) -> &mut Self { self.width_percent(w).height_percent(h) }
-    pub fn size(&mut self, w: Val, h: Val) -> &mut Self { self.width(w).height(h) }
+    pub fn size_px(&mut self, w: f32, h: f32) -> &mut Self {
+        self.width_px(w).height_px(h)
+    }
+    pub fn size_percent(&mut self, w: f32, h: f32) -> &mut Self {
+        self.width_percent(w).height_percent(h)
+    }
+    pub fn size(&mut self, w: Val, h: Val) -> &mut Self {
+        self.width(w).height(h)
+    }
 
     pub fn flex_direction(&mut self, dir: FlexDirection) -> &mut Self {
         self.modify_node(move |mut n| n.flex_direction = dir)
     }
-    pub fn flex_row(&mut self) -> &mut Self { self.flex_direction(FlexDirection::Row) }
-    pub fn flex_column(&mut self) -> &mut Self { self.flex_direction(FlexDirection::Column) }
+    pub fn flex_row(&mut self) -> &mut Self {
+        self.flex_direction(FlexDirection::Row)
+    }
+    pub fn flex_column(&mut self) -> &mut Self {
+        self.flex_direction(FlexDirection::Column)
+    }
 
     pub fn align_items(&mut self, align: AlignItems) -> &mut Self {
         self.modify_node(move |mut n| n.align_items = align)
     }
-    pub fn align_items_center(&mut self) -> &mut Self { self.align_items(AlignItems::Center) }
+    pub fn align_items_center(&mut self) -> &mut Self {
+        self.align_items(AlignItems::Center)
+    }
 
     pub fn justify_content(&mut self, jc: JustifyContent) -> &mut Self {
         self.modify_node(move |mut n| n.justify_content = jc)
     }
-    pub fn justify_center(&mut self) -> &mut Self { self.justify_content(JustifyContent::Center) }
+    pub fn justify_center(&mut self) -> &mut Self {
+        self.justify_content(JustifyContent::Center)
+    }
 
     pub fn padding(&mut self, p: UiRect) -> &mut Self {
         self.modify_node(move |mut n| n.padding = p)
     }
-    pub fn padding_all_px(&mut self, v: f32) -> &mut Self { self.padding(UiRect::all(Val::Px(v))) }
-    pub fn padding_all(&mut self, v:Val) -> &mut Self { self.padding(UiRect::all(v)) }
+    pub fn padding_all_px(&mut self, v: f32) -> &mut Self {
+        self.padding(UiRect::all(Val::Px(v)))
+    }
+    pub fn padding_all(&mut self, v: Val) -> &mut Self {
+        self.padding(UiRect::all(v))
+    }
 
     pub fn margin(&mut self, m: UiRect) -> &mut Self {
         self.modify_node(move |mut n| n.margin = m)
     }
-    pub fn margin_all_px(&mut self, v: f32) -> &mut Self { self.margin(UiRect::all(Val::Px(v))) }
-    pub fn margin_btm_px(&mut self, v: f32) -> &mut Self { self.margin(UiRect::bottom(Val::Px(v))) }
-    pub fn margin_btm(&mut self, v: Val) -> &mut Self { self.modify_node(move |mut n| n.margin.bottom = v) }
-    pub fn margin_top(&mut self, v: Val) -> &mut Self { self.modify_node(move |mut n| n.margin.top = v) }
-    pub fn margin_left(&mut self, v: Val) -> &mut Self { self.modify_node(move |mut n| n.margin.left = v) }
-    pub fn margin_right(&mut self, v: Val) -> &mut Self { self.modify_node(move |mut n| n.margin.right = v) }
-    pub fn margin_all(&mut self, v: Val) -> &mut Self { self.modify_node(move |mut n| n.margin = UiRect::all(v)) } 
-    pub fn margin_zero(&mut self) -> &mut Self { self.margin(UiRect::ZERO) }
-    pub fn padding_zero(&mut self) -> &mut Self { self.padding(UiRect::ZERO) }
+    pub fn margin_all_px(&mut self, v: f32) -> &mut Self {
+        self.margin(UiRect::all(Val::Px(v)))
+    }
+    pub fn margin_btm_px(&mut self, v: f32) -> &mut Self {
+        self.margin(UiRect::bottom(Val::Px(v)))
+    }
+    pub fn margin_btm(&mut self, v: Val) -> &mut Self {
+        self.modify_node(move |mut n| n.margin.bottom = v)
+    }
+    pub fn margin_top(&mut self, v: Val) -> &mut Self {
+        self.modify_node(move |mut n| n.margin.top = v)
+    }
+    pub fn margin_left(&mut self, v: Val) -> &mut Self {
+        self.modify_node(move |mut n| n.margin.left = v)
+    }
+    pub fn margin_right(&mut self, v: Val) -> &mut Self {
+        self.modify_node(move |mut n| n.margin.right = v)
+    }
+    pub fn margin_all(&mut self, v: Val) -> &mut Self {
+        self.modify_node(move |mut n| n.margin = UiRect::all(v))
+    }
+    pub fn margin_zero(&mut self) -> &mut Self {
+        self.margin(UiRect::ZERO)
+    }
+    pub fn padding_zero(&mut self) -> &mut Self {
+        self.padding(UiRect::ZERO)
+    }
 
     pub fn row_gap_px(&mut self, gap: f32) -> &mut Self {
         self.modify_node(move |mut n| n.row_gap = Val::Px(gap))
     }
-    
+
     pub fn column_gap_px(&mut self, gap: f32) -> &mut Self {
         self.modify_node(move |mut n| n.column_gap = Val::Px(gap))
     }
-    
+
     pub fn column_gap(&mut self, gap: Val) -> &mut Self {
         self.modify_node(move |mut n| n.column_gap = gap)
     }
-    
-    pub fn row_gap(&mut self, gap: Val)-> &mut Self {
+
+    pub fn row_gap(&mut self, gap: Val) -> &mut Self {
         self.modify_node(move |mut n| n.row_gap = gap)
     }
-    
-    pub fn gap(&mut self, col_gap: Val, row_gap: Val    ) -> &mut Self {
-        self.modify_node(move |mut n| { n.row_gap = row_gap; n.column_gap = col_gap; })
+
+    pub fn gap(&mut self, col_gap: Val, row_gap: Val) -> &mut Self {
+        self.modify_node(move |mut n| {
+            n.row_gap = row_gap;
+            n.column_gap = col_gap;
+        })
     }
     pub fn gap_px(&mut self, gap: f32) -> &mut Self {
-        self.modify_node(move |mut n| { n.row_gap = Val::Px(gap); n.column_gap = Val::Px(gap); })
+        self.modify_node(move |mut n| {
+            n.row_gap = Val::Px(gap);
+            n.column_gap = Val::Px(gap);
+        })
     }
 
     pub fn grid_cols(&mut self, count: u16) -> &mut Self {
@@ -262,15 +333,21 @@ impl<'w, 's> UIBuilder<'w, 's> {
         self.modify_node(move |mut n| n.border_radius = BorderRadius::all(Val::Px(v)))
     }
 
-    pub fn flex_dir_row(&mut self) -> &mut Self { self.flex_row() }
-    pub fn flex_dir_column(&mut self) -> &mut Self { self.flex_column() }
+    pub fn flex_dir_row(&mut self) -> &mut Self {
+        self.flex_row()
+    }
+    pub fn flex_dir_column(&mut self) -> &mut Self {
+        self.flex_column()
+    }
 
-    pub fn flex_direction_row(&mut self) -> &mut Self { self.flex_row() }
+    pub fn flex_direction_row(&mut self) -> &mut Self {
+        self.flex_row()
+    }
 
     pub fn border_all_px(&mut self, width: f32, color: Color) -> &mut Self {
         self.border(UiRect::all(Val::Px(width)), color)
     }
-    
+
     pub fn border_all(&mut self, width: Val, color: Color) -> &mut Self {
         self.border(UiRect::all(width), color)
     }
@@ -282,7 +359,9 @@ impl<'w, 's> UIBuilder<'w, 's> {
     pub fn with_overflow(&mut self, overflow: Overflow) -> &mut Self {
         self.modify_node(move |mut n| n.overflow = overflow)
     }
-    pub fn overflow_scroll_y(&mut self) -> &mut Self { self.with_overflow(Overflow::scroll_y()) }
+    pub fn overflow_scroll_y(&mut self) -> &mut Self {
+        self.with_overflow(Overflow::scroll_y())
+    }
 
     pub fn justify_start(&mut self) -> &mut Self {
         self.justify_content(JustifyContent::FlexStart)
@@ -300,7 +379,8 @@ impl<'w, 's> UIBuilder<'w, 's> {
     // ========================================================================
 
     pub fn bg_color(&mut self, color: Color) -> &mut Self {
-        self.commands.entity(self.current_entity)
+        self.commands
+            .entity(self.current_entity)
             .entry::<BackgroundColor>()
             .and_modify(move |mut bg| *bg = BackgroundColor(color))
             .or_insert(BackgroundColor(color));
@@ -309,7 +389,8 @@ impl<'w, 's> UIBuilder<'w, 's> {
 
     pub fn border(&mut self, border: UiRect, color: Color) -> &mut Self {
         self.modify_node(move |mut n| n.border = border);
-        self.commands.entity(self.current_entity)
+        self.commands
+            .entity(self.current_entity)
             .entry::<BorderColor>()
             .and_modify(move |mut bc| *bc = BorderColor::all(color))
             .or_insert(BorderColor::all(color));
@@ -337,10 +418,7 @@ impl<'w, 's> UIBuilder<'w, 's> {
                 .with_font(font.unwrap_or_else(|| theme.font.clone()))
                 .with_font_size(font_size.unwrap_or(theme.label_size)),
             TextColor(color.unwrap_or(theme.label_color)),
-            TextLayout::new(
-                justify.unwrap_or_default(),
-                line_break.unwrap_or_default(),
-            ),
+            TextLayout::new(justify.unwrap_or_default(), line_break.unwrap_or_default()),
         );
         self.commands.entity(self.current_entity).insert(bundle);
         self
@@ -359,7 +437,9 @@ impl<'w, 's> UIBuilder<'w, 's> {
         font_size: Option<f32>,
         color: Option<Color>,
     ) -> &mut Self {
-        self.with_child(|b| { b.with_text(text, font, font_size, color, None, None); })
+        self.with_child(|b| {
+            b.with_text(text, font, font_size, color, None, None);
+        })
     }
 
     /// Spawn a child with text using all theme defaults.
@@ -368,36 +448,54 @@ impl<'w, 's> UIBuilder<'w, 's> {
     }
 
     pub fn text_justify(&mut self, justify: Justify) -> &mut Self {
-        self.commands.entity(self.current_entity)
+        self.commands
+            .entity(self.current_entity)
             .entry::<TextLayout>()
             .and_modify(move |mut tl| tl.justify = justify)
             .or_insert(TextLayout::new(justify, LineBreak::default()));
         self
     }
-    pub fn text_justify_center(&mut self) -> &mut Self { self.text_justify(Justify::Center) }
+    pub fn text_justify_center(&mut self) -> &mut Self {
+        self.text_justify(Justify::Center)
+    }
 
     // ========================================================================
     // Composite helpers (row, column, grid, panel, etc.)
     // ========================================================================
 
     pub fn add_row<F: FnOnce(&mut Self)>(&mut self, f: F) -> &mut Self {
-        self.with_child(|ui| { ui.display_flex().flex_row(); f(ui); })
+        self.with_child(|ui| {
+            ui.display_flex().flex_row();
+            f(ui);
+        })
     }
 
     pub fn add_column<F: FnOnce(&mut Self)>(&mut self, f: F) -> &mut Self {
-        self.with_child(|ui| { ui.display_flex().flex_column(); f(ui); })
+        self.with_child(|ui| {
+            ui.display_flex().flex_column();
+            f(ui);
+        })
     }
 
     pub fn add_panel<F: FnOnce(&mut Self)>(&mut self, f: F) -> &mut Self {
-        self.with_child(|ui| { ui.display_flex().flex_column().padding_all_px(16.0); f(ui); })
+        self.with_child(|ui| {
+            ui.display_flex().flex_column().padding_all_px(16.0);
+            f(ui);
+        })
     }
 
     pub fn add_grid<F: FnOnce(&mut Self)>(&mut self, cols: u16, f: F) -> &mut Self {
-        self.with_child(|ui| { ui.display_grid().grid_cols(cols).gap_px(8.0); f(ui); })
+        self.with_child(|ui| {
+            ui.display_grid().grid_cols(cols).gap_px(8.0);
+            f(ui);
+        })
     }
 
     pub fn add_centered<F: FnOnce(&mut Self)>(&mut self, f: F) -> &mut Self {
-        self.with_child(|ui| { ui.display_flex().justify_center().align_items_center(); f(ui); })
+        self.with_child(|ui| {
+            ui.display_flex().justify_center().align_items_center();
+            f(ui);
+        })
     }
 
     /// Add a simple button child with text, size, bg color, font size, border radius, and a marker component.
@@ -433,7 +531,11 @@ impl<'w, 's> UIBuilder<'w, 's> {
     }
 
     /// Spawn a child with text, run a closure on it, then return to parent.
-    pub fn build_text_child<F: FnOnce(&mut Self)>(&mut self, text: impl Into<String>, f: F) -> &mut Self {
+    pub fn build_text_child<F: FnOnce(&mut Self)>(
+        &mut self,
+        text: impl Into<String>,
+        f: F,
+    ) -> &mut Self {
         self.with_child(|ui| {
             ui.default_text(text);
             f(ui);
@@ -479,7 +581,8 @@ impl<'w, 's> UIBuilder<'w, 's> {
             TextColor(btn.text_color),
         );
 
-        self.commands.entity(button_entity)
+        self.commands
+            .entity(button_entity)
             .insert(node)
             .insert(Button)
             .insert(BackgroundColor(bg))
@@ -493,7 +596,85 @@ impl<'w, 's> UIBuilder<'w, 's> {
             ui: self,
             text_entity: Some(text_entity),
         };
-        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| f(&mut button_builder)));
+        let result =
+            std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| f(&mut button_builder)));
+
+        self.current_entity = original_entity;
+        while self.parent_stack.len() > original_stack_len {
+            self.parent_stack.pop_back();
+        }
+        if let Err(payload) = result {
+            std::panic::resume_unwind(payload);
+        }
+        self
+    }
+
+    /// Add a themed button as a child. Returns to the parent after the closure.
+    pub fn add_themed_button_observe<M, F>(
+        &mut self,
+        f: F,
+        handler: impl IntoObserverSystem<Activate, (), M>,
+    ) -> &mut Self
+    where
+        F: FnOnce(&mut ButtonBuilder),
+    {
+        let original_entity = self.current_entity;
+        let original_stack_len = self.parent_stack.len();
+
+        self.child();
+        let button_entity = self.current_entity;
+
+        let btn = &self.theme.button;
+        let node = Node {
+            width: Val::Px(150.0),
+            height: Val::Px(75.0),
+            justify_content: JustifyContent::Center,
+            align_items: AlignItems::Center,
+            border_radius: btn.border_radius,
+            ..default()
+        };
+        let bg = btn.bg;
+        let palette = InteractionPalette {
+            none: btn.bg,
+            hovered: btn.bg_hovered,
+            pressed: btn.bg_pressed,
+        };
+        let text_bundle = (
+            Text::default(),
+            TextFont::default()
+                .with_font(btn.font.clone())
+                .with_font_size(btn.font_size),
+            TextColor(btn.text_color),
+        );
+
+        self.commands
+            .entity(button_entity)
+            .insert(node)
+            .insert(Button)
+            .insert(BackgroundColor(bg))
+            .insert(palette);
+
+        self.commands.entity(button_entity).insert((
+            Hovered::default(),
+            EntityCursor::System(SystemCursorIcon::Pointer),
+            TabIndex(0),
+            InheritableFont {
+                font: HandleOrPath::Handle(btn.font.clone()),
+                font_size: btn.font_size,
+            },
+        ));
+
+        self.commands.entity(button_entity).observe(handler);
+
+        let text_entity = self.commands.spawn(text_bundle).id();
+        self.commands.entity(button_entity).add_child(text_entity);
+
+        let mut button_builder = ButtonBuilder {
+            ui: self,
+            text_entity: Some(text_entity),
+        };
+        let result =
+            std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| f(&mut button_builder)));
 
         self.current_entity = original_entity;
         while self.parent_stack.len() > original_stack_len {
@@ -529,22 +710,21 @@ impl<'w, 's> UIBuilder<'w, 's> {
 
             ui.with_child(|btn| {
                 btn.insert(Button);
-                btn.insert(CollapseToggleButton { target: collapsible_entity });
+                btn.insert(CollapseToggleButton {
+                    target: collapsible_entity,
+                });
                 btn.padding_all_px(8.0)
                     .margin(UiRect::bottom(Val::Px(4.0)))
                     .bg_color(Color::srgb(0.25, 0.25, 0.3));
 
                 let arrow = if collapsed { "▶" } else { "▼" };
-                btn.add_text_child(
-                    format!("{} {}", arrow, label_owned),
-                    None,
-                    Some(12.0),
-                    None,
-                );
+                btn.add_text_child(format!("{} {}", arrow, label_owned), None, Some(12.0), None);
             });
 
             ui.with_child(|content| {
-                content.insert(CollapsibleContent { parent: collapsible_entity });
+                content.insert(CollapsibleContent {
+                    parent: collapsible_entity,
+                });
                 content.display_flex().flex_column().width_percent(100.0);
                 if collapsed {
                     content.display(Display::None);
@@ -558,8 +738,11 @@ impl<'w, 's> UIBuilder<'w, 's> {
         self.with_collapsible(label, false, f)
     }
 
-    pub fn add_collapsible_collapsed<F: FnOnce(&mut Self)>(&mut self, label: &str, f: F) -> &mut Self {
+    pub fn add_collapsible_collapsed<F: FnOnce(&mut Self)>(
+        &mut self,
+        label: &str,
+        f: F,
+    ) -> &mut Self {
         self.with_collapsible(label, true, f)
     }
 }
-
