@@ -245,6 +245,13 @@ impl<'w, 's> UIBuilder<'w, 's> {
     pub fn align_items_center(&mut self) -> &mut Self {
         self.align_items(AlignItems::Center)
     }
+    pub fn align_items_end(&mut self) -> &mut Self {
+        self.align_items(AlignItems::End)
+    }
+    pub fn align_items_start(&mut self) -> &mut Self {
+        self.align_items(AlignItems::Start)
+    }
+    
 
     pub fn justify_content(&mut self, jc: JustifyContent) -> &mut Self {
         self.modify_node(move |mut n| n.justify_content = jc)
@@ -816,4 +823,6 @@ impl<'w, 's> UIBuilder<'w, 's> {
     ) -> &mut Self {
         self.with_collapsible(label, true, f)
     }
+}
+
 }
