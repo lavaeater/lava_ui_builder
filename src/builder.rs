@@ -238,6 +238,22 @@ impl<'w, 's> UIBuilder<'w, 's> {
     pub fn size(&mut self, w: Val, h: Val) -> &mut Self {
         self.width(w).height(h)
     }
+    
+    pub fn size_scaled(&mut self, w_percent: f32, h_percent: f32) -> &mut Self {
+        let width = w_percent * self.theme.ui_width / 100.0;
+        let height = h_percent * self.theme.ui_height / 100.0;
+        self.width(px(width)).height(px(height))
+    }
+    
+    pub fn width_scaled(&mut self, w_percent: f32)-> &mut Self {
+        let width = w_percent * self.theme.ui_width / 100.0;
+        self.width(px(width)) 
+    }
+
+    pub fn height_scaled(&mut self, h_percent: f32)-> &mut Self {
+        let height = h_percent * self.theme.ui_height / 100.0;
+        self.height(px(height))
+    }
 
     pub fn flex_direction(&mut self, dir: FlexDirection) -> &mut Self {
         self.modify_node(move |mut n| n.flex_direction = dir)
@@ -833,3 +849,4 @@ impl<'w, 's> UIBuilder<'w, 's> {
         self.with_collapsible(label, true, f)
     }
 }
+
