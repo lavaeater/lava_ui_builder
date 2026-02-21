@@ -16,7 +16,7 @@ pub use bevy::feathers::rounded_corners::RoundedCorners;
 pub use bevy::feathers::theme::ThemedText;
 pub use bevy::ui::InteractionDisabled;
 pub use bevy::ui_widgets::Activate;
-
+use bevy::window::{PrimaryWindow, WindowResized};
 // ============================================================================
 // Theme types — slim replacements for the old NodeDef/NodePartial/ButtonDef/etc.
 // ============================================================================
@@ -85,6 +85,8 @@ pub struct LavaTheme {
     pub text: TextTheme,
     pub bg_color: Color,
     pub border_color: Color,
+    pub ui_width: f32,
+    pub ui_height: f32,
 }
 
 impl Default for LavaTheme {
@@ -94,6 +96,8 @@ impl Default for LavaTheme {
             text: TextTheme::default(),
             bg_color: Color::srgba(0.5, 0.5, 0.5, 0.25),
             border_color: Color::srgba(0.2, 0.2, 0.2, 0.25),
+            ui_width: 1920.0,
+            ui_height: 1080.0,
         }
     }
 }
@@ -339,15 +343,23 @@ pub struct LavaUiPlugin;
 
 impl Plugin for LavaUiPlugin {
     fn build(&self, app: &mut App) {
-        app
-            .add_systems(
+        app.insert_resource(UiScale(1.0)).add_systems(
             Update,
             (
                 systems::handle_scroll_input,
                 systems::handle_collapse_toggle,
                 systems::update_collapsible_visibility,
                 systems::apply_interaction_palette,
+                adapt_ui_scale,
             ),
         );
+    }
+}
+
+fn adapt_ui_scale(mut message_reader: MessageReader<WindowResized>, mut ui_scale: ResMut<UiScale>) {
+    for event in message_reader.read() {
+        let base_width = 1920.0;
+        ui_scale.0 = (event.width / base_width).max(0.5);
+        info!("Ui scale: {}", ui_scale.0);
     }
 }
