@@ -2,6 +2,7 @@ use crate::{
     ButtonBuilder, ButtonVariant, CollapseToggleButton, Collapsible, CollapsibleContent,
     InteractionPalette, LavaTheme, UIBuilder,
 };
+use bevy::ecs::event::EntityEvent;
 use bevy::ecs::system::IntoObserverSystem;
 use bevy::feathers::cursor::EntityCursor;
 use bevy::feathers::font_styles::InheritableFont;
@@ -128,6 +129,15 @@ impl<'w, 's> UIBuilder<'w, 's> {
     // ========================================================================
     // Component insertion
     // ========================================================================
+
+    /// Attach an entity-scoped observer to the current entity.
+    pub fn observe<E: EntityEvent, B: Bundle, M>(
+        &mut self,
+        handler: impl IntoObserverSystem<E, B, M>,
+    ) -> &mut Self {
+        self.commands.entity(self.current_entity).observe(handler);
+        self
+    }
 
     /// Insert any component on the current entity.
     pub fn insert<T: Component>(&mut self, component: T) -> &mut Self {
