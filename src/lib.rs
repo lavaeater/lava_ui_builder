@@ -16,7 +16,7 @@ pub use bevy::feathers::rounded_corners::RoundedCorners;
 pub use bevy::feathers::theme::ThemedText;
 pub use bevy::ui::InteractionDisabled;
 pub use bevy::ui_widgets::Activate;
-use bevy::window::{PrimaryWindow, WindowResized};
+use bevy::window::{WindowResized};
 // ============================================================================
 // Theme types — slim replacements for the old NodeDef/NodePartial/ButtonDef/etc.
 // ============================================================================
