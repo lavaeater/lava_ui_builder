@@ -295,6 +295,22 @@ impl<'w, 's> UIBuilder<'w, 's> {
         self.padding(UiRect::all(v))
     }
 
+
+    pub fn padding_top(&mut self, v: Val) -> &mut Self {
+        self.modify_node(move |mut n| n.padding.top = v)
+    }
+    pub fn padding_left(&mut self, v: Val) -> &mut Self {
+        self.modify_node(move |mut n| n.padding.left = v)
+    }
+
+    pub fn padding_right(&mut self, v: Val) -> &mut Self {
+        self.modify_node(move |mut n| n.padding.right = v)
+    }
+    
+    pub fn padding_bottom(&mut self, v: Val) -> &mut Self {
+        self.modify_node(move |mut n| n.padding.bottom = v)
+    }
+
     pub fn margin(&mut self, m: UiRect) -> &mut Self {
         self.modify_node(move |mut n| n.margin = m)
     }
