@@ -14,7 +14,8 @@ use bevy::picking::hover::HoverMap;
 use bevy::platform::collections::HashMap;
 use bevy::prelude::*;
 use lava_ui_builder::{
-    CollapseToggleButton, Collapsible, CollapsibleContent, UIBuilder, UiTheme,
+    percent, CollapseToggleButton, Collapsible, CollapsibleContent, LavaTheme, TextStyle,
+    UIBuilder,
 };
 
 // ============================================================================
@@ -112,7 +113,7 @@ impl PlayerActivityLog {
 fn main() {
     App::new()
         .add_plugins(DefaultPlugins)
-        .insert_resource(UiTheme::default())
+        .insert_resource(LavaTheme::default())
         .init_resource::<PlayerActivityLog>()
         .add_systems(
             Startup,
@@ -187,7 +188,7 @@ fn spawn_mock_players(mut commands: Commands) {
 
 fn setup_trade_ui(
     commands: Commands,
-    theme: Res<UiTheme>,
+    theme: Res<LavaTheme>,
     players: Query<(&Name, &Player, &PlayerCards)>,
     activity_log: Res<PlayerActivityLog>,
 ) {
@@ -203,7 +204,7 @@ fn setup_trade_ui(
     });
 
     // ── Left side: Collapsible Trade Cards ────────────────────────────
-    ui.add_collapsible("Trade Cards", |cards_section| {
+    ui.with_collapsible("Trade Cards", false, |cards_section| {
         cards_section
             .component::<TradeCardList>()
             .width_px(340.0)
@@ -222,7 +223,7 @@ fn setup_trade_ui(
     });
 
     // ── Right side: Collapsible Game Info ──────────────────────────────
-    ui.add_collapsible("Game Info", |info| {
+    ui.with_collapsible("Game Info", false, |info| {
         info.width_px(500.0)
             .bg_color(Color::srgba(0.1, 0.1, 0.1, 0.7))
             .padding_all_px(4.0);
@@ -230,38 +231,32 @@ fn setup_trade_ui(
         // Game State sub-section
         info.add_text_child(
             "Game State",
-            None,
-            Some(20.0),
-            Some(Color::srgb(1.0, 0.8, 0.0)),
+            Some(TextStyle::size_color(20.0, Color::srgb(1.0, 0.8, 0.0))),
         );
         info.with_child(|state| {
             state
                 .component::<GameStateDisplay>()
                 .width_percent(100.0)
                 .display_flex()
-                .flex_dir_column()
+                .flex_column()
                 .padding_all_px(4.0)
                 .margin(UiRect::bottom(Val::Px(8.0)));
 
-            state.add_text_child("State: Playing", None, None, None);
-            state.add_text_child("Activity: Trade", None, None, None);
-            state.add_text_child("Round: 3", None, None, None);
+            state.add_text_child("State: Playing", None);
+            state.add_text_child("Activity: Trade", None);
+            state.add_text_child("Round: 3", None);
 
             // Census order
             state.add_text_child(
                 "Census Order:",
-                None,
-                Some(16.0),
-                Some(Color::srgb(1.0, 0.8, 0.0)),
+                Some(TextStyle::size_color(16.0, Color::srgb(1.0, 0.8, 0.0))),
             );
             for (i, (name, player, _cards)) in players.iter().enumerate() {
                 let color = faction_color(player.faction);
                 let human_tag = if player.is_human { " (YOU)" } else { "" };
                 state.add_text_child(
                     format!("{}. {}{}", i + 1, name, human_tag),
-                    None,
-                    Some(14.0),
-                    Some(color),
+                    Some(TextStyle::size_color(14.0, color)),
                 );
             }
         });
@@ -269,16 +264,14 @@ fn setup_trade_ui(
         // Player Activity sub-section
         info.add_text_child(
             "Player Activity",
-            None,
-            Some(20.0),
-            Some(Color::srgb(1.0, 0.8, 0.0)),
+            Some(TextStyle::size_color(20.0, Color::srgb(1.0, 0.8, 0.0))),
         );
         info.with_child(|list| {
             list.component::<PlayerActivityListContainer>()
                 .width_percent(100.0)
                 .height_px(300.0)
                 .display_flex()
-                .flex_dir_column()
+                .flex_column()
                 .padding_all_px(4.0)
                 .with_overflow(Overflow::scroll_y())
                 .insert(ScrollPosition::default());
@@ -296,7 +289,7 @@ fn setup_trade_ui(
                     row.width_percent(100.0)
                         .height_px(50.0)
                         .display_flex()
-                        .flex_dir_row()
+                        .flex_row()
                         .align_items_center()
                         .padding_all_px(4.0)
                         .margin_all_px(2.0)
@@ -315,15 +308,11 @@ fn setup_trade_ui(
 
                     row.add_text_child(
                         format!("{}: ", display_name),
-                        None,
-                        Some(14.0),
-                        Some(color),
+                        Some(TextStyle::size_color(14.0, color)),
                     );
                     row.add_text_child(
                         activity_log.get(Entity::PLACEHOLDER),
-                        None,
-                        Some(14.0),
-                        None,
+                        Some(TextStyle::size(14.0)),
                     );
                 });
             }
@@ -345,7 +334,7 @@ fn build_trade_card(ui: &mut UIBuilder, stack: &CardStack) {
         card.width_px(120.0)
             .height_px(60.0)
             .display_flex()
-            .flex_dir_column()
+            .flex_column()
             .justify_center()
             .align_items_center()
             .padding_all_px(2.0)
@@ -354,24 +343,16 @@ fn build_trade_card(ui: &mut UIBuilder, stack: &CardStack) {
             .border_radius_all_px(4.0);
 
         if stack.is_commodity {
-            card.add_text_child(&stack.name, None, Some(medium_font), None);
+            card.add_text_child(&stack.name, Some(TextStyle::size(medium_font)));
             card.add_text_child(
                 format!("x{} = {}", stack.count, stack.suite_value),
-                None,
-                Some(small_font),
-                None,
+                Some(TextStyle::size(small_font)),
             );
         } else {
-            card.add_text_child(&stack.name, None, Some(medium_font), None);
+            card.add_text_child(&stack.name, Some(TextStyle::size(medium_font)));
             card.add_text_child(
-                if stack.is_tradeable {
-                    "Tradeable"
-                } else {
-                    "Non-Tradeable"
-                },
-                None,
-                Some(small_font),
-                None,
+                if stack.is_tradeable { "Tradeable" } else { "Non-Tradeable" },
+                Some(TextStyle::size(small_font)),
             );
         }
     });
@@ -398,7 +379,7 @@ fn build_trade_card_list(ui: &mut UIBuilder, stacks: &[CardStack]) {
                 .align_items_center()
                 .with_flex_shrink(0.0);
 
-            row.add_text_child(format!("{}:", pile_value), None, Some(20.0), None);
+            row.add_text_child(format!("{}:", pile_value), Some(TextStyle::size(20.0)));
 
             for stack in &sorted {
                 build_trade_card(row, stack);
