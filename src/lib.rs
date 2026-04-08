@@ -35,6 +35,10 @@ pub struct ButtonTheme {
     pub border_color: Color,
     pub height: Val,
     pub width: Val,
+    /// Colors for collapsible section toggle buttons.
+    pub collapsible_bg: Color,
+    pub collapsible_bg_hovered: Color,
+    pub collapsible_bg_pressed: Color,
 }
 
 impl Default for ButtonTheme {
@@ -51,6 +55,9 @@ impl Default for ButtonTheme {
             border_color: Color::srgb(0.2, 0.2, 0.2),
             height: px(50.0),
             width: px(150.0),
+            collapsible_bg: Color::srgb(0.25, 0.25, 0.3),
+            collapsible_bg_hovered: Color::srgb(0.35, 0.35, 0.4),
+            collapsible_bg_pressed: Color::srgb(0.4, 0.6, 0.4),
         }
     }
 }
@@ -282,6 +289,7 @@ where
 pub struct UIBuilder<'w, 's> {
     commands: Commands<'w, 's>,
     theme: LavaTheme,
+    root_entity: Entity,
     current_entity: Entity,
     parent_stack: VecDeque<Entity>,
 }
@@ -356,9 +364,13 @@ impl Plugin for LavaUiPlugin {
     }
 }
 
-fn adapt_ui_scale(mut message_reader: MessageReader<WindowResized>, mut ui_scale: ResMut<UiScale>) {
+fn adapt_ui_scale(
+    mut message_reader: MessageReader<WindowResized>,
+    mut ui_scale: ResMut<UiScale>,
+    theme: Option<Res<LavaTheme>>,
+) {
     for event in message_reader.read() {
-        let base_width = 1920.0;
+        let base_width = theme.as_ref().map(|t| t.ui_width).unwrap_or(1920.0);
         ui_scale.0 = (event.width / base_width).max(0.5);
         info!("Ui scale: {}", ui_scale.0);
     }

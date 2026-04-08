@@ -122,6 +122,10 @@ impl<'w, 's> UIBuilder<'w, 's> {
     }
 
     /// Add a Feathers-style button with custom props and an observer.
+    ///
+    /// **Note:** The `ButtonBuilder` passed to `f` has `text_entity: None` because the Feathers
+    /// `button()` function spawns its text as a child internally. Calling `.text()`, `.font_size()`,
+    /// or `.text_color()` on the builder will silently do nothing.
     pub fn feathers_button_with_overrides<B, M, F>(
         &mut self,
         text: impl Into<String>,

@@ -27,6 +27,7 @@ impl<'w, 's> UIBuilder<'w, 's> {
         Self {
             commands,
             theme: theme.unwrap_or_default(),
+            root_entity: entity,
             current_entity: entity,
             parent_stack: VecDeque::new(),
         }
@@ -45,6 +46,7 @@ impl<'w, 's> UIBuilder<'w, 's> {
         Self {
             commands,
             theme: theme.unwrap_or_default(),
+            root_entity: entity,
             current_entity: entity,
             parent_stack: VecDeque::new(),
         }
@@ -119,11 +121,7 @@ impl<'w, 's> UIBuilder<'w, 's> {
 
     /// Finish building and return the root entity + commands.
     pub fn build(self) -> (Entity, Commands<'w, 's>) {
-        if !self.parent_stack.is_empty() {
-            (self.parent_stack[0], self.commands)
-        } else {
-            (self.current_entity, self.commands)
-        }
+        (self.root_entity, self.commands)
     }
 
     // ========================================================================
@@ -381,17 +379,6 @@ impl<'w, 's> UIBuilder<'w, 's> {
         self.modify_node(move |mut n| n.border_radius = BorderRadius::all(Val::Px(v)))
     }
 
-    pub fn flex_dir_row(&mut self) -> &mut Self {
-        self.flex_row()
-    }
-    pub fn flex_dir_column(&mut self) -> &mut Self {
-        self.flex_column()
-    }
-
-    pub fn flex_direction_row(&mut self) -> &mut Self {
-        self.flex_row()
-    }
-
     pub fn border_all_px(&mut self, width: f32, color: Color) -> &mut Self {
         self.border(UiRect::all(Val::Px(width)), color)
     }
@@ -594,10 +581,24 @@ impl<'w, 's> UIBuilder<'w, 's> {
     // Button (imperative, using theme)
     // ========================================================================
 
-    /// Add a themed button as a child. Returns to the parent after the closure.
-    pub fn add_themed_button<T, F>(&mut self, component: T, f: F) -> &mut Self
+    // ========================================================================
+    // Private button helper
+    // ========================================================================
+
+    /// Shared implementation for all "spawn a themed button child" methods.
+    /// Spawns a child entity with `bundle` (which must include `Node`, colors, etc.),
+    /// attaches a text child, calls `setup(commands, button_entity)` for optional
+    /// observer/extra-component attachment, then runs the `ButtonBuilder` closure.
+    fn spawn_button_inner<B, S, F>(
+        &mut self,
+        text: impl Into<String>,
+        bundle: B,
+        setup: S,
+        f: F,
+    ) -> &mut Self
     where
-        T: Component,
+        B: Bundle,
+        S: FnOnce(&mut Commands, Entity),
         F: FnOnce(&mut ButtonBuilder),
     {
         let original_entity = self.current_entity;
@@ -606,36 +607,20 @@ impl<'w, 's> UIBuilder<'w, 's> {
         self.child();
         let button_entity = self.current_entity;
 
+        self.commands.entity(button_entity).insert(bundle);
+        setup(&mut self.commands, button_entity);
+
         let btn = &self.theme.button;
-        let node = Node {
-            justify_content: JustifyContent::Center,
-            align_items: AlignItems::Center,
-            border_radius: btn.border_radius,
-            ..default()
-        };
-        let bg = btn.bg;
-        let palette = InteractionPalette {
-            none: btn.bg,
-            hovered: btn.bg_hovered,
-            pressed: btn.bg_pressed,
-        };
-        let text_bundle = (
-            Text::default(),
-            TextFont::default()
-                .with_font(btn.font.clone())
-                .with_font_size(btn.font_size),
-            TextColor(btn.text_color),
-        );
-
-        self.commands
-            .entity(button_entity)
-            .insert(node)
-            .insert(WidgetsButton)
-            .insert(BackgroundColor(bg))
-            .insert(palette)
-            .insert(component);
-
-        let text_entity = self.commands.spawn(text_bundle).id();
+        let text_entity = self
+            .commands
+            .spawn((
+                Text::new(text.into()),
+                TextFont::default()
+                    .with_font(btn.font.clone())
+                    .with_font_size(btn.font_size),
+                TextColor(btn.text_color),
+            ))
+            .id();
         self.commands.entity(button_entity).add_child(text_entity);
 
         let mut button_builder = ButtonBuilder {
@@ -654,7 +639,37 @@ impl<'w, 's> UIBuilder<'w, 's> {
         }
         self
     }
-    
+
+    // ========================================================================
+    // Public button methods
+    // ========================================================================
+
+    /// Add a themed button as a child. Returns to the parent after the closure.
+    pub fn add_themed_button<T, F>(&mut self, component: T, f: F) -> &mut Self
+    where
+        T: Component,
+        F: FnOnce(&mut ButtonBuilder),
+    {
+        let btn = &self.theme.button;
+        let bundle = (
+            Node {
+                justify_content: JustifyContent::Center,
+                align_items: AlignItems::Center,
+                border_radius: btn.border_radius,
+                ..default()
+            },
+            BackgroundColor(btn.bg),
+            InteractionPalette {
+                none: btn.bg,
+                hovered: btn.bg_hovered,
+                pressed: btn.bg_pressed,
+            },
+            WidgetsButton,
+            component,
+        );
+        self.spawn_button_inner("", bundle, |_, _| {}, f)
+    }
+
     pub fn z_index(&mut self, z_index: i32) -> &mut Self {
         self.commands.entity(self.current_entity).insert(ZIndex(z_index));
         self
@@ -669,111 +684,61 @@ impl<'w, 's> UIBuilder<'w, 's> {
     where
         F: FnOnce(&mut ButtonBuilder),
     {
-        let original_entity = self.current_entity;
-        let original_stack_len = self.parent_stack.len();
-
-        self.child();
-        let button_entity = self.current_entity;
-
-        let button_theme = &self.theme.button;
-
-        self.commands.entity(button_entity).insert((
+        let btn = &self.theme.button;
+        let bundle = (
             Node {
                 justify_content: JustifyContent::Center,
                 align_items: AlignItems::Center,
-                border_radius: button_theme.border_radius,
-                border: UiRect::all(button_theme.border_width),
+                border_radius: btn.border_radius,
+                border: UiRect::all(btn.border_width),
                 ..default()
             },
-            BorderColor::all(button_theme.border_color),
-            BackgroundColor(button_theme.bg),
+            BorderColor::all(btn.border_color),
+            BackgroundColor(btn.bg),
             InteractionPalette {
-                hovered: button_theme.bg_hovered,
-                pressed: button_theme.bg_pressed,
-                none: button_theme.bg,
+                hovered: btn.bg_hovered,
+                pressed: btn.bg_pressed,
+                none: btn.bg,
             },
             Hovered::default(),
             WidgetsButton,
             ButtonVariant::Normal,
             EntityCursor::System(SystemCursorIcon::Pointer),
             TabIndex(0),
-        ));
-
-        let text_entity = self
-            .commands
-            .spawn((
-                Text::new(text),
-                TextFont::default()
-                    .with_font(button_theme.font.clone())
-                    .with_font_size(button_theme.font_size),
-                TextColor(button_theme.text_color),
-            ))
-            .id();
-        self.commands.entity(button_entity).add_child(text_entity);
-        self.commands.entity(button_entity).observe(handler);
-        let mut button_builder = ButtonBuilder {
-            ui: self,
-            text_entity: Some(text_entity),
-        };
-        let result =
-            std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| f(&mut button_builder)));
-
-        self.current_entity = original_entity;
-        while self.parent_stack.len() > original_stack_len {
-            self.parent_stack.pop_back();
-        }
-        if let Err(payload) = result {
-            std::panic::resume_unwind(payload);
-        }
-        self
+        );
+        self.spawn_button_inner(text, bundle, move |commands, entity| {
+            commands.entity(entity).observe(handler);
+        }, f)
     }
 
-    /// Add a themed button as a child. Returns to the parent after the closure.
+    /// Add a themed button (with width/height from theme) as a child. Returns to the parent after the closure.
     pub fn add_themed_button_observe<M, F>(
         &mut self,
+        text: impl Into<String>,
         f: F,
         handler: impl IntoObserverSystem<Activate, (), M>,
     ) -> &mut Self
     where
         F: FnOnce(&mut ButtonBuilder),
     {
-        let original_entity = self.current_entity;
-        let original_stack_len = self.parent_stack.len();
-
-        self.child();
-        let button_entity = self.current_entity;
-
         let btn = &self.theme.button;
-        let node = Node {
-            width: Val::Px(150.0),
-            height: Val::Px(75.0),
-            justify_content: JustifyContent::Center,
-            align_items: AlignItems::Center,
-            border_radius: btn.border_radius,
-            ..default()
-        };
-        let bg = btn.bg;
-        let palette = InteractionPalette {
-            none: btn.bg,
-            hovered: btn.bg_hovered,
-            pressed: btn.bg_pressed,
-        };
-        let text_bundle = (
-            Text::new("PLAAAY"),
-            TextFont::default()
-                .with_font(btn.font.clone())
-                .with_font_size(btn.font_size),
-            TextColor(btn.text_color),
-        );
-
-        self.commands
-            .entity(button_entity)
-            .insert(node)
-            .insert(WidgetsButton)
-            .insert(BackgroundColor(bg))
-            .insert(palette);
-
-        self.commands.entity(button_entity).insert((
+        let bundle = (
+            Node {
+                width: btn.width,
+                height: btn.height,
+                justify_content: JustifyContent::Center,
+                align_items: AlignItems::Center,
+                border_radius: btn.border_radius,
+                border: UiRect::all(btn.border_width),
+                ..default()
+            },
+            BorderColor::all(btn.border_color),
+            BackgroundColor(btn.bg),
+            InteractionPalette {
+                none: btn.bg,
+                hovered: btn.bg_hovered,
+                pressed: btn.bg_pressed,
+            },
             Hovered::default(),
             WidgetsButton,
             ButtonVariant::Normal,
@@ -783,26 +748,10 @@ impl<'w, 's> UIBuilder<'w, 's> {
                 font: HandleOrPath::Handle(btn.font.clone()),
                 font_size: btn.font_size,
             },
-        ));
-
-        let text_entity = self.commands.spawn(text_bundle).id();
-        self.commands.entity(button_entity).add_child(text_entity);
-        self.commands.entity(button_entity).observe(handler);
-        let mut button_builder = ButtonBuilder {
-            ui: self,
-            text_entity: Some(text_entity),
-        };
-        let result =
-            std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| f(&mut button_builder)));
-
-        self.current_entity = original_entity;
-        while self.parent_stack.len() > original_stack_len {
-            self.parent_stack.pop_back();
-        }
-        if let Err(payload) = result {
-            std::panic::resume_unwind(payload);
-        }
-        self
+        );
+        self.spawn_button_inner(text, bundle, move |commands, entity| {
+            commands.entity(entity).observe(handler);
+        }, f)
     }
 
     // ========================================================================
@@ -827,6 +776,7 @@ impl<'w, 's> UIBuilder<'w, 's> {
             });
             ui.display_flex().flex_column();
 
+            let toggle_bg = ui.theme.button.collapsible_bg;
             ui.with_child(|btn| {
                 btn.insert(Button);
                 btn.insert(CollapseToggleButton {
@@ -834,7 +784,7 @@ impl<'w, 's> UIBuilder<'w, 's> {
                 });
                 btn.padding_all_px(8.0)
                     .margin(UiRect::bottom(Val::Px(4.0)))
-                    .bg_color(Color::srgb(0.25, 0.25, 0.3));
+                    .bg_color(toggle_bg);
 
                 let arrow = if collapsed { "▶" } else { "▼" };
                 btn.add_text_child(format!("{} {}", arrow, label_owned), None, Some(12.0), None);
@@ -853,16 +803,5 @@ impl<'w, 's> UIBuilder<'w, 's> {
         })
     }
 
-    pub fn add_collapsible<F: FnOnce(&mut Self)>(&mut self, label: &str, f: F) -> &mut Self {
-        self.with_collapsible(label, false, f)
-    }
-
-    pub fn add_collapsible_collapsed<F: FnOnce(&mut Self)>(
-        &mut self,
-        label: &str,
-        f: F,
-    ) -> &mut Self {
-        self.with_collapsible(label, true, f)
-    }
 }
 
