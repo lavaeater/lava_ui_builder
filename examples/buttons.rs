@@ -14,7 +14,7 @@ use lava_ui_builder::*;
 fn main() {
     App::new()
         .add_plugins(DefaultPlugins)
-        .insert_resource(UiTheme::default())
+        .insert_resource(LavaTheme::default())
         .add_systems(Startup, (setup_camera, setup_ui))
         .add_systems(Update, handle_interaction_palette)
         .run();
@@ -37,7 +37,7 @@ struct QuitButton;
 
 // ── UI setup ─────────────────────────────────────────────────────────────
 
-fn setup_ui(mut commands: Commands, theme: Res<UiTheme>) {
+fn setup_ui(mut commands: Commands, theme: Res<LavaTheme>) {
     // ── Section 1: Bundle-function themed buttons ────────────────────
     // Spawn the root container, then add themed_button children individually
     // (themed_button uses SpawnWith internally, so we add them as children).
@@ -108,7 +108,7 @@ fn setup_ui(mut commands: Commands, theme: Res<UiTheme>) {
 
     // Header
     ui.with_child(|h| {
-        h.with_text("Imperative Buttons", None, Some(40.0), None, None, None);
+        h.with_text("Imperative Buttons", Some(TextStyle::size(40.0)));
     });
 
     // Themed button via add_themed_button + ButtonBuilder
@@ -136,7 +136,7 @@ fn setup_ui(mut commands: Commands, theme: Res<UiTheme>) {
         spacer.height_px(16.0);
     });
     ui.with_child(|h| {
-        h.with_text("Feathers Buttons", None, Some(32.0), None, None, None);
+        h.with_text("Feathers Buttons", Some(TextStyle::size(32.0)));
     });
 
     ui.feathers_button("Default", |_activate: On<Activate>| {
@@ -146,7 +146,7 @@ fn setup_ui(mut commands: Commands, theme: Res<UiTheme>) {
 
     ui.feathers_button_primary("Primary", |_activate: On<Activate>| {
         info!("Feathers primary button activated");
-    });
+    }, |_btn| {});
 
     ui.feathers_button_disabled("Disabled", |_activate: On<Activate>| {
         info!("This should not fire");
