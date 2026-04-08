@@ -122,6 +122,33 @@ pub struct InteractionPalette {
 // These return `impl Bundle` and compose with `children![]`.
 // ============================================================================
 
+/// Style overrides for text widgets. All fields are optional; `None` falls back to the theme default.
+#[derive(Clone, Debug, Default)]
+pub struct TextStyle {
+    pub font: Option<Handle<Font>>,
+    pub font_size: Option<f32>,
+    pub color: Option<Color>,
+    pub justify: Option<bevy::text::Justify>,
+    pub line_break: Option<bevy::text::LineBreak>,
+}
+
+impl TextStyle {
+    /// Returns a `TextStyle` with only font size set.
+    pub fn size(font_size: f32) -> Self {
+        Self { font_size: Some(font_size), ..default() }
+    }
+
+    /// Returns a `TextStyle` with only color set.
+    pub fn color(color: Color) -> Self {
+        Self { color: Some(color), ..default() }
+    }
+
+    /// Returns a `TextStyle` with font size and color set.
+    pub fn size_color(font_size: f32, color: Color) -> Self {
+        Self { font_size: Some(font_size), color: Some(color), ..default() }
+    }
+}
+
 /// Convenience helpers matching the palette module style.
 pub fn px(val: f32) -> Val {
     Val::Px(val)

@@ -1,6 +1,6 @@
 use crate::{
     ButtonBuilder, ButtonVariant, CollapseToggleButton, Collapsible, CollapsibleContent,
-    InteractionPalette, LavaTheme, UIBuilder,
+    InteractionPalette, LavaTheme, TextStyle, UIBuilder,
 };
 use bevy::ecs::event::EntityEvent;
 use bevy::ecs::system::IntoObserverSystem;
@@ -436,24 +436,22 @@ impl<'w, 's> UIBuilder<'w, 's> {
     // Text
     // ========================================================================
 
-    /// Add a text component to the current entity using theme defaults.
+    /// Add a text component to the current entity, with optional style overrides.
+    /// `None` for `style` uses all theme defaults.
     pub fn with_text(
         &mut self,
         text: impl Into<String>,
-        font: Option<Handle<Font>>,
-        font_size: Option<f32>,
-        color: Option<Color>,
-        justify: Option<Justify>,
-        line_break: Option<LineBreak>,
+        style: Option<TextStyle>,
     ) -> &mut Self {
         let theme = &self.theme.text;
+        let s = style.unwrap_or_default();
         let bundle = (
             Text::new(text.into()),
             TextFont::default()
-                .with_font(font.unwrap_or_else(|| theme.font.clone()))
-                .with_font_size(font_size.unwrap_or(theme.label_size)),
-            TextColor(color.unwrap_or(theme.label_color)),
-            TextLayout::new(justify.unwrap_or_default(), line_break.unwrap_or_default()),
+                .with_font(s.font.unwrap_or_else(|| theme.font.clone()))
+                .with_font_size(s.font_size.unwrap_or(theme.label_size)),
+            TextColor(s.color.unwrap_or(theme.label_color)),
+            TextLayout::new(s.justify.unwrap_or_default(), s.line_break.unwrap_or_default()),
         );
         self.commands.entity(self.current_entity).insert(bundle);
         self
@@ -461,25 +459,23 @@ impl<'w, 's> UIBuilder<'w, 's> {
 
     /// Shorthand: set text with all theme defaults.
     pub fn default_text(&mut self, text: impl Into<String>) -> &mut Self {
-        self.with_text(text, None, None, None, None, None)
+        self.with_text(text, None)
     }
 
-    /// Spawn a child with text.
+    /// Spawn a child with text and optional style overrides.
     pub fn add_text_child(
         &mut self,
         text: impl Into<String>,
-        font: Option<Handle<Font>>,
-        font_size: Option<f32>,
-        color: Option<Color>,
+        style: Option<TextStyle>,
     ) -> &mut Self {
         self.with_child(|b| {
-            b.with_text(text, font, font_size, color, None, None);
+            b.with_text(text, style);
         })
     }
 
     /// Spawn a child with text using all theme defaults.
     pub fn text_node(&mut self, text: impl Into<String>) -> &mut Self {
-        self.add_text_child(text, None, None, None)
+        self.add_text_child(text, None)
     }
 
     pub fn text_justify(&mut self, justify: Justify) -> &mut Self {
@@ -554,7 +550,7 @@ impl<'w, 's> UIBuilder<'w, 's> {
                 .display_flex()
                 .justify_center()
                 .align_items_center();
-            ui.add_text_child(text, None, Some(font_size), None);
+            ui.add_text_child(text, Some(crate::TextStyle::size(font_size)));
         })
     }
 
@@ -787,7 +783,7 @@ impl<'w, 's> UIBuilder<'w, 's> {
                     .bg_color(toggle_bg);
 
                 let arrow = if collapsed { "▶" } else { "▼" };
-                btn.add_text_child(format!("{} {}", arrow, label_owned), None, Some(12.0), None);
+                btn.add_text_child(format!("{} {}", arrow, label_owned), Some(crate::TextStyle::size(12.0)));
             });
 
             ui.with_child(|content| {
