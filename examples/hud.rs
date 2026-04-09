@@ -79,7 +79,7 @@ fn setup_scene(mut commands: Commands) {
 
 // ── HUD setup ─────────────────────────────────────────────────────────────────
 
-fn setup_hud(mut commands: Commands, theme: Res<LavaTheme>, state: Res<GameState>) {
+fn setup_hud(commands: Commands, theme: Res<LavaTheme>, state: Res<GameState>) {
     let mut ui = UIBuilder::new(commands, Some(theme.clone()));
 
     // Full-screen column: top row / flex-grow spacer / bottom row

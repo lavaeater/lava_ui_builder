@@ -52,7 +52,7 @@ struct GraphicsSettings { quality: GraphicsQuality }
 
 // ── UI build ──────────────────────────────────────────────────────────────────
 
-fn setup_ui(mut commands: Commands, theme: Res<LavaTheme>) {
+fn setup_ui(commands: Commands, theme: Res<LavaTheme>) {
     let mut ui = UIBuilder::new(commands, Some(theme.clone()));
 
     ui.set_node(Node {
@@ -82,7 +82,7 @@ fn panel_shell(ui: &mut UIBuilder, f: impl FnOnce(&mut UIBuilder)) {
     f(ui);
 }
 
-fn build_main_panel(ui: &mut UIBuilder, theme: &LavaTheme) {
+fn build_main_panel(ui: &mut UIBuilder, _theme: &LavaTheme) {
     ui.with_child(|panel| {
         panel.insert(MainPanel);
         panel_shell(panel, |p| {
@@ -100,12 +100,12 @@ fn build_main_panel(ui: &mut UIBuilder, theme: &LavaTheme) {
 
             p.add_button_observe("  Quit  ",
                 |btn| { btn.size_px(260.0, 56.0).bg_color(Color::srgb(0.5, 0.1, 0.1)); },
-                |_: On<Activate>, mut exit: EventWriter<AppExit>| { exit.write(AppExit::Success); });
+                |_: On<Activate>| { std::process::exit(0); });
         });
     });
 }
 
-fn build_audio_panel(ui: &mut UIBuilder, theme: &LavaTheme) {
+fn build_audio_panel(ui: &mut UIBuilder, _theme: &LavaTheme) {
     ui.with_child(|panel| {
         panel.insert(AudioPanel).display_none();
         panel_shell(panel, |p| {
@@ -146,7 +146,7 @@ fn build_audio_panel(ui: &mut UIBuilder, theme: &LavaTheme) {
     });
 }
 
-fn build_graphics_panel(ui: &mut UIBuilder, theme: &LavaTheme) {
+fn build_graphics_panel(ui: &mut UIBuilder, _theme: &LavaTheme) {
     ui.with_child(|panel| {
         panel.insert(GraphicsPanel).display_none();
         panel_shell(panel, |p| {
