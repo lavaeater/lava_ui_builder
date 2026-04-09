@@ -191,6 +191,12 @@ impl<'w, 's> UIBuilder<'w, 's> {
     pub fn left(&mut self, left: Val) -> &mut Self {
         self.modify_node(move |mut n| n.left = left)
     }
+    pub fn top(&mut self, top: Val) -> &mut Self {
+        self.modify_node(move |mut n| n.top = top)
+    }
+    pub fn right(&mut self, right: Val) -> &mut Self {
+        self.modify_node(move |mut n| n.right = right)
+    }
     pub fn display(&mut self, display: Display) -> &mut Self {
         self.modify_node(move |mut n| n.display = display)
     }
@@ -407,6 +413,10 @@ impl<'w, 's> UIBuilder<'w, 's> {
 
     pub fn with_flex_shrink(&mut self, shrink: f32) -> &mut Self {
         self.modify_node(move |mut n| n.flex_shrink = shrink)
+    }
+
+    pub fn with_flex_grow(&mut self, grow: f32) -> &mut Self {
+        self.modify_node(move |mut n| n.flex_grow = grow)
     }
 
     // ========================================================================

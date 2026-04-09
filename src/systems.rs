@@ -2,7 +2,7 @@ use bevy::input::mouse::{MouseScrollUnit, MouseWheel};
 use bevy::picking::hover::HoverMap;
 use bevy::prelude::*;
 
-use crate::{CollapseToggleButton, Collapsible, CollapsibleContent, InteractionPalette, LavaTheme};
+use crate::{CollapseToggleButton, Collapsible, CollapsibleContent, InteractionPalette, LavaTheme, ProgressBar, ProgressBarFill};
 
 // ============================================================================
 // Scroll handling
@@ -99,6 +99,24 @@ pub fn update_collapsible_visibility(
                         };
                     }
                 }
+            }
+        }
+    }
+}
+
+// ============================================================================
+// Progress bar sync
+// ============================================================================
+
+/// Update the fill node width whenever a [`ProgressBar`]'s `value` changes.
+pub fn sync_progress_bars(
+    bar_query: Query<(&ProgressBar, &Children), Changed<ProgressBar>>,
+    mut fill_query: Query<&mut Node, With<ProgressBarFill>>,
+) {
+    for (bar, children) in &bar_query {
+        for child in children.iter() {
+            if let Ok(mut node) = fill_query.get_mut(child) {
+                node.width = Val::Percent(bar.value.clamp(0.0, 1.0) * 100.0);
             }
         }
     }

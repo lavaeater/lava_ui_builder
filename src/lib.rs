@@ -368,6 +368,53 @@ pub struct CollapsibleContent {
 }
 
 // ============================================================================
+// Progress bar widget
+// ============================================================================
+
+/// Component that drives the fill percentage of a [`progress_bar`] widget.
+/// Change `value` (0.0–1.0) and the `sync_progress_bars` system will update the inner fill node.
+#[derive(Component, Clone, Debug)]
+pub struct ProgressBar {
+    /// Fill fraction, clamped to `0.0..=1.0`.
+    pub value: f32,
+    pub fill_color: Color,
+}
+
+/// Marker placed on the inner fill node spawned by [`progress_bar`].
+#[derive(Component)]
+pub struct ProgressBarFill;
+
+/// Spawn a horizontal progress bar with an optional [`ProgressBar`] component for dynamic updates.
+///
+/// `value` is the initial fill fraction (0.0–1.0).
+pub fn progress_bar(value: f32, width: f32, height: f32, fill_color: Color, bg_color: Color) -> impl Bundle {
+    let pct = value.clamp(0.0, 1.0) * 100.0;
+    (
+        Name::new("ProgressBar"),
+        ProgressBar { value, fill_color },
+        Node {
+            width: px(width),
+            height: px(height),
+            overflow: Overflow::clip(),
+            ..default()
+        },
+        BackgroundColor(bg_color),
+        Children::spawn(SpawnWith(move |parent: &mut ChildSpawner| {
+            parent.spawn((
+                Name::new("ProgressBarFill"),
+                ProgressBarFill,
+                Node {
+                    width: percent(pct),
+                    height: percent(100.0),
+                    ..default()
+                },
+                BackgroundColor(fill_color),
+            ));
+        })),
+    )
+}
+
+// ============================================================================
 // Plugin
 // ============================================================================
 
@@ -385,6 +432,7 @@ impl Plugin for LavaUiPlugin {
                 systems::handle_collapse_toggle,
                 systems::update_collapsible_visibility,
                 systems::apply_interaction_palette,
+                systems::sync_progress_bars,
                 adapt_ui_scale,
             ),
         );

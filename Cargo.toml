@@ -29,3 +29,19 @@ path = "examples/buttons.rs"
 [[example]]
 name = "complex_example"
 path = "examples/complex_example.rs"
+
+[[example]]
+name = "game_menu"
+path = "examples/game_menu.rs"
+
+[[example]]
+name = "hud"
+path = "examples/hud.rs"
+
+[[example]]
+name = "scoreboard"
+path = "examples/scoreboard.rs"
+
+[[example]]
+name = "dark_light_theme"
+path = "examples/dark_light_theme.rs"
