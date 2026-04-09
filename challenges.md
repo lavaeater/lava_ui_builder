@@ -72,7 +72,7 @@ A combination of responsive design, for games which need to save multiple displa
 
 ![Character editor example (Sims 4)](https://github.com/bevyengine/bevy/assets/13908946/bd177192-79dd-451b-870e-81aec040453d)
 
-### Motivation
+### MotivationWhy n
 
 This example showcases how a 3D scene can be integrated in the UI as well as having an information flow from UI to 3D scene.
 Additionally, we feature a simple text input and a scroll box.

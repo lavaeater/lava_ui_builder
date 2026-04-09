@@ -31,6 +31,10 @@ name = "complex_example"
 path = "examples/complex_example.rs"
 
 [[example]]
+name = "inventory"
+path = "examples/inventory.rs"
+
+[[example]]
 name = "game_menu"
 path = "examples/game_menu.rs"
 
