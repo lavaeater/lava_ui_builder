@@ -150,12 +150,16 @@ impl TextStyle {
 }
 
 /// Convenience helpers matching the palette module style.
-pub fn px(val: f32) -> Val {
-    Val::Px(val)
-}
+// pub fn px(val: f32) -> Val {
+//     Val::Px(val)
+// }
+// 
+// pub fn percent(val: f32) -> Val {
+//     Val::Percent(val)
+// }
 
-pub fn percent(val: f32) -> Val {
-    Val::Percent(val)
+pub fn rect_all(val: Val) -> UiRect {
+  UiRect::all(val)
 }
 
 /// A root UI node that fills the window and centers its content.
