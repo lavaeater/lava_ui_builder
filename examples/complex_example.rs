@@ -14,7 +14,7 @@ use bevy::picking::hover::HoverMap;
 use bevy::platform::collections::HashMap;
 use bevy::prelude::*;
 use lava_ui_builder::{
-    percent, CollapseToggleButton, Collapsible, CollapsibleContent, LavaTheme, TextStyle,
+    CollapseToggleButton, Collapsible, CollapsibleContent, LavaTheme, TextStyle,
     UIBuilder,
 };
 
