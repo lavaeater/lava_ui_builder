@@ -2,7 +2,7 @@ use bevy::input::mouse::{MouseScrollUnit, MouseWheel};
 use bevy::picking::hover::HoverMap;
 use bevy::prelude::*;
 
-use crate::{CollapseToggleButton, Collapsible, CollapsibleContent, InteractionPalette};
+use crate::{CollapseToggleButton, Collapsible, CollapsibleContent, InteractionPalette, LavaTheme, ProgressBar, ProgressBarFill};
 
 // ============================================================================
 // Scroll handling
@@ -43,20 +43,28 @@ pub fn handle_collapse_toggle(
         Changed<Interaction>,
     >,
     mut collapsible_query: Query<&mut Collapsible>,
+    theme: Option<Res<LavaTheme>>,
 ) {
+    let (bg_normal, bg_hovered, bg_pressed) = theme.as_ref().map(|t| {
+        (t.button.collapsible_bg, t.button.collapsible_bg_hovered, t.button.collapsible_bg_pressed)
+    }).unwrap_or_else(|| {
+        let d = crate::ButtonTheme::default();
+        (d.collapsible_bg, d.collapsible_bg_hovered, d.collapsible_bg_pressed)
+    });
+
     for (interaction, toggle_btn, mut bg_color) in &mut interaction_query {
         match *interaction {
             Interaction::Pressed => {
-                *bg_color = BackgroundColor(Color::srgb(0.4, 0.6, 0.4));
+                *bg_color = BackgroundColor(bg_pressed);
                 if let Ok(mut collapsible) = collapsible_query.get_mut(toggle_btn.target) {
                     collapsible.collapsed = !collapsible.collapsed;
                 }
             }
             Interaction::Hovered => {
-                *bg_color = BackgroundColor(Color::srgb(0.35, 0.35, 0.4));
+                *bg_color = BackgroundColor(bg_hovered);
             }
             Interaction::None => {
-                *bg_color = BackgroundColor(Color::srgb(0.25, 0.25, 0.3));
+                *bg_color = BackgroundColor(bg_normal);
             }
         }
     }
@@ -97,6 +105,24 @@ pub fn update_collapsible_visibility(
 }
 
 // ============================================================================
+// Progress bar sync
+// ============================================================================
+
+/// Update the fill node width whenever a [`ProgressBar`]'s `value` changes.
+pub fn sync_progress_bars(
+    bar_query: Query<(&ProgressBar, &Children), Changed<ProgressBar>>,
+    mut fill_query: Query<&mut Node, With<ProgressBarFill>>,
+) {
+    for (bar, children) in &bar_query {
+        for child in children.iter() {
+            if let Ok(mut node) = fill_query.get_mut(child) {
+                node.width = Val::Percent(bar.value.clamp(0.0, 1.0) * 100.0);
+            }
+        }
+    }
+}
+
+// ============================================================================
 // InteractionPalette system
 // ============================================================================
 
@@ -116,81 +142,3 @@ pub fn apply_interaction_palette(
     }
 }
 
-// ============================================================================
-// Spawn helper (non-builder)
-// ============================================================================
-
-/// Helper function to spawn a collapsible section with content using raw Commands.
-/// Returns `(collapsible_entity, content_entity)`.
-pub fn spawn_collapsible_section(
-    commands: &mut Commands,
-    label: &str,
-    initially_collapsed: bool,
-) -> (Entity, Entity) {
-    let collapsible_entity = commands
-        .spawn((
-            if initially_collapsed {
-                Collapsible::collapsed(label)
-            } else {
-                Collapsible::new(label)
-            },
-            Node {
-                flex_direction: FlexDirection::Column,
-                width: Val::Auto,
-                ..Default::default()
-            },
-        ))
-        .id();
-
-    commands.entity(collapsible_entity).with_children(|parent| {
-        parent
-            .spawn((
-                Button,
-                CollapseToggleButton {
-                    target: collapsible_entity,
-                },
-                Node {
-                    padding: UiRect::axes(Val::Px(8.0), Val::Px(4.0)),
-                    margin: UiRect::bottom(Val::Px(4.0)),
-                    ..Default::default()
-                },
-                BackgroundColor(Color::srgb(0.25, 0.25, 0.3)),
-            ))
-            .with_child((
-                Text::new(if initially_collapsed {
-                    format!("▶ {}", label)
-                } else {
-                    format!("▼ {}", label)
-                }),
-                TextFont {
-                    font_size: 12.0,
-                    ..Default::default()
-                },
-                TextColor(Color::WHITE),
-            ));
-    });
-
-    let content_entity = commands
-        .spawn((
-            CollapsibleContent {
-                parent: collapsible_entity,
-            },
-            Node {
-                flex_direction: FlexDirection::Column,
-                width: Val::Percent(100.0),
-                display: if initially_collapsed {
-                    Display::None
-                } else {
-                    Display::Flex
-                },
-                ..Default::default()
-            },
-        ))
-        .id();
-
-    commands
-        .entity(collapsible_entity)
-        .add_child(content_entity);
-
-    (collapsible_entity, content_entity)
-}

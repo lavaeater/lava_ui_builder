@@ -13,7 +13,7 @@ use lava_ui_builder::*;
 fn main() {
     App::new()
         .add_plugins(DefaultPlugins)
-        .insert_resource(UiTheme::default())
+        .insert_resource(LavaTheme::default())
         .add_systems(Startup, (setup_camera, setup_ui))
         .run();
 }
@@ -22,19 +22,8 @@ fn setup_camera(mut commands: Commands) {
     commands.spawn(Camera2d);
 }
 
-fn setup_ui(mut commands: Commands, theme: Res<UiTheme>) {
-    // ── Bundle-function approach ──────────────────────────────────────
-    // Use `ui_root` + `children![]` for static, declarative layouts.
-    commands.spawn((
-        ui_root("Bundle Layout"),
-        children![
-            header("Lava UI Builder", &theme.text),
-            label("Bundle-function widgets compose with children![]", &theme.text),
-        ],
-    ));
-
-    // ── Imperative UIBuilder approach ─────────────────────────────────
-    // Use `UIBuilder` for dynamic, data-driven UI trees.
+fn setup_ui(commands: Commands, theme: Res<LavaTheme>) {
+    // Both APIs share a single root node so they don't overlap.
     let mut ui = UIBuilder::new(commands, Some(theme.clone()));
 
     ui.set_node(Node {
@@ -45,10 +34,15 @@ fn setup_ui(mut commands: Commands, theme: Res<UiTheme>) {
         justify_content: JustifyContent::Center,
         flex_direction: FlexDirection::Column,
         row_gap: Val::Px(16.0),
-        padding: UiRect::top(Val::Px(200.0)),
         ..default()
     });
 
+    // ── Bundle-function approach ──────────────────────────────────────
+    // `header` and `label` return `impl Bundle`; insert them on child nodes.
+    ui.with_child(|c| { c.insert_bundle(header("Lava UI Builder", &theme.text)); });
+    ui.with_child(|c| { c.insert_bundle(label("Bundle-function widgets compose with children![]", &theme.text)); });
+
+    // ── Imperative UIBuilder approach ─────────────────────────────────
     // A simple column with text nodes
     ui.add_column(|col| {
         col.gap_px(8.0).align_items_center();

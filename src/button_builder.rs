@@ -4,7 +4,6 @@ use bevy::prelude::*;
 
 use bevy::feathers::controls::{button, ButtonProps, ButtonVariant};
 use bevy::feathers::rounded_corners::RoundedCorners;
-use bevy::feathers::theme::ThemedText;
 use bevy::ui::InteractionDisabled;
 use bevy::ui_widgets::Activate;
 
@@ -42,6 +41,30 @@ impl<'a, 'w, 's> ButtonBuilder<'a, 'w, 's> {
             .and_modify(move |mut n| { n.width = Val::Px(width); });
         self
     }
+    
+    pub fn width(&mut self, width: Val) -> &mut Self {
+        self.ui.commands.entity(self.ui.current_entity).entry::<Node>()
+            .and_modify(move |mut n| { n.width = width; });
+        self
+    }
+    
+    pub fn height(&mut self, height: Val) -> &mut Self {
+        self.ui.commands.entity(self.ui.current_entity).entry::<Node>()
+            .and_modify(move |mut n| { n.height = height; });
+        self
+    }
+    
+    pub fn justify_content(&mut self, justify_content: JustifyContent)-> &mut Self {
+        self.ui.commands.entity(self.ui.current_entity).entry::<Node>()
+            .and_modify(move |mut n| { n.justify_content = justify_content; });
+        self
+    }
+
+    pub fn align_items(&mut self, align_items: AlignItems)-> &mut Self {
+        self.ui.commands.entity(self.ui.current_entity).entry::<Node>()
+            .and_modify(move |mut n| { n.align_items = align_items; });
+        self
+    }
 
     pub fn height_px(&mut self, height: f32) -> &mut Self {
         self.ui.commands.entity(self.ui.current_entity).entry::<Node>()
@@ -51,6 +74,10 @@ impl<'a, 'w, 's> ButtonBuilder<'a, 'w, 's> {
 
     pub fn size_px(&mut self, width: f32, height: f32) -> &mut Self {
         self.width_px(width).height_px(height)
+    }
+    
+    pub fn size(&mut self, width: Val, height: Val) -> &mut Self {
+        self.width(width).height(height)
     }
 
     pub fn bg_color(&mut self, color: Color) -> &mut Self {
@@ -91,19 +118,25 @@ impl<'w, 's> UIBuilder<'w, 's> {
         text: impl Into<String>,
         handler: impl IntoObserverSystem<Activate, (), M>,
     ) -> &mut Self {
-        self.feathers_button_with_props(text, ButtonProps::default(), (), handler)
+        self.feathers_button_with_overrides(text, ButtonProps::default(), (), handler, |_| {})
     }
 
     /// Add a Feathers-style button with custom props and an observer.
-    pub fn feathers_button_with_props<B, M>(
+    ///
+    /// **Note:** The `ButtonBuilder` passed to `f` has `text_entity: None` because the Feathers
+    /// `button()` function spawns its text as a child internally. Calling `.text()`, `.font_size()`,
+    /// or `.text_color()` on the builder will silently do nothing.
+    pub fn feathers_button_with_overrides<B, M, F>(
         &mut self,
         text: impl Into<String>,
         props: ButtonProps,
-        extra_components: B,
+        overrides: B,
         handler: impl IntoObserverSystem<Activate, (), M>,
+        f: F,
     ) -> &mut Self
     where
         B: Bundle,
+        F: FnOnce(&mut ButtonBuilder),
     {
         let text_str = text.into();
         let original_entity = self.current_entity;
@@ -111,33 +144,53 @@ impl<'w, 's> UIBuilder<'w, 's> {
 
         self.child();
         let button_entity = self.current_entity;
-
+        let btn = self.theme.button.clone();
         let button_bundle = button(
             props,
-            extra_components,
-            Spawn((Text::new(text_str), ThemedText)),
+            overrides,
+            Spawn(Text::new(text_str)),
         );
-
+        
         self.commands
             .entity(button_entity)
             .insert(button_bundle)
-            .observe(handler);
+            .observe(handler)
+            .entry::<Node>()
+            .and_modify(move |mut n| { 
+                n.border_radius = btn.border_radius;
+                n.height = btn.height;
+                n.width = btn.width;
+            });
+
+        let mut button_builder = ButtonBuilder {
+            ui: self,
+            text_entity: None,
+        };
+        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| f(&mut button_builder)));
 
         self.current_entity = original_entity;
         while self.parent_stack.len() > original_stack_len {
             self.parent_stack.pop_back();
         }
 
+        if let Err(payload) = result {
+            std::panic::resume_unwind(payload);
+        }
+
         self
     }
 
     /// Add a Feathers-style primary button with an observer.
-    pub fn feathers_button_primary<M>(
+    pub fn feathers_button_primary<M, F>(
         &mut self,
         text: impl Into<String>,
         handler: impl IntoObserverSystem<Activate, (), M>,
-    ) -> &mut Self {
-        self.feathers_button_with_props(
+        f: F,
+    ) -> &mut Self
+    where
+        F: FnOnce(&mut ButtonBuilder),
+    {
+        self.feathers_button_with_overrides(
             text,
             ButtonProps {
                 variant: ButtonVariant::Primary,
@@ -145,6 +198,7 @@ impl<'w, 's> UIBuilder<'w, 's> {
             },
             (),
             handler,
+            f,
         )
     }
 
@@ -154,7 +208,7 @@ impl<'w, 's> UIBuilder<'w, 's> {
         text: impl Into<String>,
         handler: impl IntoObserverSystem<Activate, (), M>,
     ) -> &mut Self {
-        self.feathers_button_with_props(text, ButtonProps::default(), InteractionDisabled, handler)
+        self.feathers_button_with_overrides(text, ButtonProps::default(), InteractionDisabled, handler, |_| {})
     }
 
     /// Add a Feathers-style button with a marker component and an observer.
@@ -167,7 +221,7 @@ impl<'w, 's> UIBuilder<'w, 's> {
     where
         T: Component,
     {
-        self.feathers_button_with_props(text, ButtonProps::default(), marker, handler)
+        self.feathers_button_with_overrides(text, ButtonProps::default(), marker, handler, |_| {})
     }
 
     /// Add a Feathers-style button with custom rounded corners.
@@ -177,7 +231,7 @@ impl<'w, 's> UIBuilder<'w, 's> {
         corners: RoundedCorners,
         handler: impl IntoObserverSystem<Activate, (), M>,
     ) -> &mut Self {
-        self.feathers_button_with_props(
+        self.feathers_button_with_overrides(
             text,
             ButtonProps {
                 corners,
@@ -185,6 +239,8 @@ impl<'w, 's> UIBuilder<'w, 's> {
             },
             (),
             handler,
+            |_| {},
         )
     }
 }
+
