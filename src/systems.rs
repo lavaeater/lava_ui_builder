@@ -2,7 +2,7 @@ use bevy::input::mouse::{MouseScrollUnit, MouseWheel};
 use bevy::picking::hover::HoverMap;
 use bevy::prelude::*;
 
-use crate::{CollapseToggleButton, Collapsible, CollapsibleContent, InteractionPalette, LavaTheme, ProgressBar, ProgressBarFill};
+use crate::{CollapseToggleButton, Collapsible, CollapsibleContent, InteractionPalette, LavaTheme, ProgressBar, ProgressBarFill, WorldFollower};
 
 // ============================================================================
 // Scroll handling
@@ -125,6 +125,33 @@ pub fn sync_progress_bars(
 // ============================================================================
 // InteractionPalette system
 // ============================================================================
+
+// ============================================================================
+// WorldFollower — position a UI node at a world-space entity's screen position
+// ============================================================================
+
+/// Move each UI node with [`WorldFollower`] to track its target entity's screen position.
+/// Despawns the follower if the target no longer exists.
+pub fn world_follower_system(
+    mut followers: Query<(Entity, &WorldFollower, &mut Node)>,
+    transforms: Query<&GlobalTransform>,
+    mut commands: Commands,
+    camera_q: Query<(&Camera, &GlobalTransform), With<Camera3d>>,
+) {
+    let Ok((camera, camera_transform)) = camera_q.single() else {
+        return;
+    };
+    for (entity, follower, mut node) in followers.iter_mut() {
+        let Ok(tr) = transforms.get(follower.target) else {
+            commands.entity(entity).despawn();
+            continue;
+        };
+        if let Ok(pos) = camera.world_to_viewport(camera_transform, tr.translation()) {
+            node.left = Val::Px((pos.x + follower.offset.x).round());
+            node.top = Val::Px((pos.y + follower.offset.y).round());
+        }
+    }
+}
 
 /// Apply `InteractionPalette` colors based on `Interaction` state changes.
 pub fn apply_interaction_palette(

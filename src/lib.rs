@@ -388,6 +388,18 @@ pub struct ProgressBar {
 #[derive(Component)]
 pub struct ProgressBarFill;
 
+// ============================================================================
+// WorldFollower — UI node that tracks a world-space entity's screen position
+// ============================================================================
+
+/// Attach to an absolutely-positioned UI node to make it follow `target` in screen space.
+/// `offset` is applied in pixels relative to the projected position.
+#[derive(Component, Clone, Debug)]
+pub struct WorldFollower {
+    pub target: Entity,
+    pub offset: Vec2,
+}
+
 /// Spawn a horizontal progress bar with an optional [`ProgressBar`] component for dynamic updates.
 ///
 /// `value` is the initial fill fraction (0.0–1.0).
@@ -437,6 +449,7 @@ impl Plugin for LavaUiPlugin {
                 systems::update_collapsible_visibility,
                 systems::apply_interaction_palette,
                 systems::sync_progress_bars,
+                systems::world_follower_system,
                 adapt_ui_scale,
             ),
         );
