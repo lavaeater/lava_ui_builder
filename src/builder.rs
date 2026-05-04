@@ -809,5 +809,18 @@ impl<'w, 's> UIBuilder<'w, 's> {
         })
     }
 
+    // ========================================================================
+    // Images
+    // ========================================================================
+
+    /// Insert an `ImageNode` on the current entity (no size set).
+    pub fn image_node(&mut self, handle: Handle<Image>) -> &mut Self {
+        self.insert(ImageNode::new(handle))
+    }
+
+    /// Insert an `ImageNode` and set an explicit pixel size on the current entity.
+    pub fn image_node_sized(&mut self, handle: Handle<Image>, width: f32, height: f32) -> &mut Self {
+        self.size_px(width, height).insert(ImageNode::new(handle))
+    }
 }
 
