@@ -564,6 +564,202 @@ impl<'w, 's> UIBuilder<'w, 's> {
         })
     }
 
+    // ========================================================================
+    // Themed text shorthands — use the builder's own theme, no &t needed
+    // ========================================================================
+
+    /// Spawn a child with a header label using the builder's theme.
+    pub fn themed_header(&mut self, text: impl Into<String>) -> &mut Self {
+        let t = self.theme.text.clone();
+        self.with_child(|c| {
+            c.with_text(text, Some(crate::TextStyle::size_color(t.header_size, t.header_color)));
+        })
+    }
+
+    /// Spawn a child with a label using the builder's theme defaults.
+    pub fn themed_label(&mut self, text: impl Into<String>) -> &mut Self {
+        let t = self.theme.text.clone();
+        self.with_child(|c| {
+            c.with_text(text, Some(crate::TextStyle::size_color(t.label_size, t.label_color)));
+        })
+    }
+
+    /// Spawn a child label with explicit size and color (no theme needed).
+    pub fn label(&mut self, text: impl Into<String>, font_size: f32, color: Color) -> &mut Self {
+        self.with_child(|c| {
+            c.with_text(text, Some(crate::TextStyle::size_color(font_size, color)));
+        })
+    }
+
+    /// Spawn a dim section-divider label ("-- Title --" style).
+    pub fn section_label(&mut self, text: impl Into<String>) -> &mut Self {
+        let color = Color::srgb(0.5, 0.8, 0.6);
+        self.with_child(|c| {
+            c.with_text(text, Some(crate::TextStyle::size_color(13.0, color)));
+        })
+    }
+
+    // ========================================================================
+    // Missing layout setters
+    // ========================================================================
+
+    pub fn min_width(&mut self, v: Val) -> &mut Self {
+        self.modify_node(move |mut n| n.min_width = v)
+    }
+    pub fn min_width_px(&mut self, v: f32) -> &mut Self {
+        self.min_width(Val::Px(v))
+    }
+    pub fn max_width(&mut self, v: Val) -> &mut Self {
+        self.modify_node(move |mut n| n.max_width = v)
+    }
+    pub fn max_width_px(&mut self, v: f32) -> &mut Self {
+        self.max_width(Val::Px(v))
+    }
+    pub fn min_height(&mut self, v: Val) -> &mut Self {
+        self.modify_node(move |mut n| n.min_height = v)
+    }
+    pub fn min_height_px(&mut self, v: f32) -> &mut Self {
+        self.min_height(Val::Px(v))
+    }
+    pub fn max_height(&mut self, v: Val) -> &mut Self {
+        self.modify_node(move |mut n| n.max_height = v)
+    }
+    pub fn max_height_px(&mut self, v: f32) -> &mut Self {
+        self.max_height(Val::Px(v))
+    }
+
+    /// Add a flex_grow(1) spacer child to push siblings apart.
+    pub fn spacer(&mut self) -> &mut Self {
+        self.with_child(|c| { c.with_flex_grow(1.0); })
+    }
+
+    // ========================================================================
+    // Structural composites
+    // ========================================================================
+
+    /// Full-height fixed-width column panel with padding, gap, and background.
+    /// Matches the sidebar pattern used on every tool screen.
+    pub fn side_panel<F: FnOnce(&mut Self)>(&mut self, width_px: f32, bg: Color, f: F) -> &mut Self {
+        self.with_child(|c| {
+            c.width_px(width_px)
+             .height_percent(100.0)
+             .flex_column()
+             .padding_all_px(6.0)
+             .row_gap_px(3.0)
+             .bg_color(bg);
+            f(c);
+        })
+    }
+
+    /// Full-width scrollable flex-column list that grows to fill available space.
+    pub fn scrollable_list<F: FnOnce(&mut Self)>(&mut self, f: F) -> &mut Self {
+        self.with_child(|c| {
+            c.display_flex().flex_column().gap_px(2.0)
+             .with_flex_grow(1.0).width_percent(100.0)
+             .overflow_scroll_y();
+            f(c);
+        })
+    }
+
+    /// Like `scrollable_list` but capped at `max_height_px`.
+    pub fn scrollable_list_bounded<F: FnOnce(&mut Self)>(&mut self, max_height_px: f32, f: F) -> &mut Self {
+        self.with_child(|c| {
+            c.display_flex().flex_column().gap_px(2.0)
+             .width_percent(100.0)
+             .max_height_px(max_height_px)
+             .overflow_scroll_y();
+            f(c);
+        })
+    }
+
+    /// Selectable list item row. Highlights when `selected`.
+    /// Uses the game-standard green palette for selected/hovered/unselected states.
+    pub fn list_item<M>(
+        &mut self,
+        name: impl Into<String>,
+        selected: bool,
+        handler: impl IntoObserverSystem<Activate, (), M>,
+    ) -> &mut Self {
+        let bg = if selected {
+            Color::srgba(0.15, 0.40, 0.20, 0.95)
+        } else {
+            Color::srgba(0.07, 0.12, 0.09, 0.85)
+        };
+        let tc = if selected {
+            Color::srgb(0.9, 1.0, 0.9)
+        } else {
+            Color::srgb(0.65, 0.80, 0.65)
+        };
+        let name = name.into();
+        self.with_child(|c| {
+            c.width_percent(100.0)
+             .padding(UiRect::axes(Val::Px(6.0), Val::Px(4.0)))
+             .border_radius_all_px(3.0)
+             .bg_color(bg)
+             .insert(InteractionPalette {
+                 none: bg,
+                 hovered: Color::srgba(0.20, 0.50, 0.28, 0.95),
+                 pressed: Color::srgba(0.12, 0.32, 0.18, 1.0),
+             })
+             .insert(bevy::picking::hover::Hovered::default())
+             .insert(bevy::ui_widgets::Button)
+             .observe(handler);
+            c.with_child(|t| {
+                t.with_text(name, Some(crate::TextStyle::size_color(11.0, tc)));
+            });
+        })
+    }
+
+    /// Small square button with a single glyph character.
+    pub fn icon_button<M>(
+        &mut self,
+        glyph: impl Into<String>,
+        size_px: f32,
+        handler: impl IntoObserverSystem<Activate, (), M>,
+    ) -> &mut Self {
+        let glyph = glyph.into();
+        self.with_child(|c| {
+            c.size_px(size_px, size_px)
+             .display_flex().justify_center().align_items_center()
+             .border_radius_all_px(3.0)
+             .bg_color(Color::srgba(0.25, 0.25, 0.30, 0.85))
+             .insert(InteractionPalette {
+                 none:    Color::srgba(0.25, 0.25, 0.30, 0.85),
+                 hovered: Color::srgba(0.40, 0.40, 0.50, 0.95),
+                 pressed: Color::srgba(0.20, 0.20, 0.25, 1.0),
+             })
+             .insert(bevy::picking::hover::Hovered::default())
+             .insert(bevy::ui_widgets::Button)
+             .observe(handler);
+            c.with_child(|t| {
+                t.with_text(glyph, Some(crate::TextStyle::size_color(12.0, Color::srgb(0.9, 0.9, 0.9))));
+            });
+        })
+    }
+
+    /// A 16×16 red delete button ("x"). Standard for list-row removal.
+    pub fn delete_button<M>(
+        &mut self,
+        handler: impl IntoObserverSystem<Activate, (), M>,
+    ) -> &mut Self {
+        self.with_child(|c| {
+            c.size_px(16.0, 16.0)
+             .display_flex().justify_center().align_items_center()
+             .bg_color(Color::srgba(0.4, 0.1, 0.1, 0.8))
+             .insert(InteractionPalette {
+                 none:    Color::srgba(0.4, 0.1, 0.1, 0.8),
+                 hovered: Color::srgba(0.6, 0.15, 0.15, 0.9),
+                 pressed: Color::srgba(0.3, 0.08, 0.08, 1.0),
+             })
+             .insert(bevy::picking::hover::Hovered::default())
+             .insert(bevy::ui_widgets::Button)
+             .observe(handler);
+            c.with_child(|t| {
+                t.with_text("x", Some(crate::TextStyle::size_color(10.0, Color::srgb(1.0, 0.7, 0.7))));
+            });
+        })
+    }
+
     /// Spawn a child with text and a fixed width.
     pub fn text_with_width(&mut self, text: impl Into<String>, width: f32) -> &mut Self {
         self.with_child(|ui| {

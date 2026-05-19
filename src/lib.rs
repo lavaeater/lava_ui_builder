@@ -431,6 +431,57 @@ pub fn progress_bar(value: f32, width: f32, height: f32, fill_color: Color, bg_c
 }
 
 // ============================================================================
+// Free-function helpers for raw ChildSpawner contexts
+// ============================================================================
+
+/// Spawn a selectable list-item row inside a `with_children` closure.
+///
+/// Use this inside `commands.entity(container).with_children(|parent| { ... })`
+/// when you can't use the `UIBuilder` API. For UIBuilder contexts prefer
+/// `ui.list_item(name, selected, handler)`.
+pub fn spawn_list_item<M>(
+    parent: &mut ChildSpawnerCommands<'_>,
+    name: impl Into<String>,
+    selected: bool,
+    handler: impl IntoObserverSystem<Activate, (), M>,
+) where
+    M: 'static,
+{
+    let bg = if selected {
+        Color::srgba(0.15, 0.40, 0.20, 0.95)
+    } else {
+        Color::srgba(0.07, 0.12, 0.09, 0.85)
+    };
+    let tc = if selected {
+        Color::srgb(0.9, 1.0, 0.9)
+    } else {
+        Color::srgb(0.65, 0.80, 0.65)
+    };
+    parent.spawn((
+        Node {
+            width: percent(100.0),
+            padding: UiRect::axes(px(6.0), px(4.0)),
+            border_radius: BorderRadius::all(px(3.0)),
+            ..default()
+        },
+        BackgroundColor(bg),
+        InteractionPalette {
+            none: bg,
+            hovered: Color::srgba(0.20, 0.50, 0.28, 0.95),
+            pressed: Color::srgba(0.12, 0.32, 0.18, 1.0),
+        },
+        bevy::picking::hover::Hovered::default(),
+        bevy::ui_widgets::Button,
+    ))
+    .with_child((
+        Text::new(name.into()),
+        TextFont::default().with_font_size(11.0),
+        TextColor(tc),
+    ))
+    .observe(handler);
+}
+
+// ============================================================================
 // Plugin
 // ============================================================================
 
