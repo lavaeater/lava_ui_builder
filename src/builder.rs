@@ -585,9 +585,27 @@ impl<'w, 's> UIBuilder<'w, 's> {
     }
 
     /// Spawn a child label with explicit size and color (no theme needed).
+    /// Returns the **parent** — use `with_child` + `with_text` if you need to insert
+    /// a marker component on the text node itself.
     pub fn label(&mut self, text: impl Into<String>, font_size: f32, color: Color) -> &mut Self {
         self.with_child(|c| {
             c.with_text(text, Some(crate::TextStyle::size_color(font_size, color)));
+        })
+    }
+
+    /// Spawn a label child and run a closure on it before returning to the parent.
+    /// Use this when you need to insert a marker on the text entity, e.g.:
+    /// `ui.label_child("Aliens: 0", 14.0, color, |c| { c.insert(HudAlienCount); });`
+    pub fn label_child<F: FnOnce(&mut Self)>(
+        &mut self,
+        text: impl Into<String>,
+        font_size: f32,
+        color: Color,
+        f: F,
+    ) -> &mut Self {
+        self.with_child(|c| {
+            c.with_text(text, Some(crate::TextStyle::size_color(font_size, color)));
+            f(c);
         })
     }
 
