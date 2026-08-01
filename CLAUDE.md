@@ -24,7 +24,7 @@ There are no tests in this crate — validation is done by running examples.
 
 ## Architecture
 
-`lava_ui_builder` is a fluent Bevy 0.18 UI builder library. It provides two complementary APIs:
+`lava_ui_builder` is a fluent Bevy 0.19 UI builder library. It provides two complementary APIs:
 
 ### Bundle-function API (`src/lib.rs`)
 Free functions (`ui_root`, `header`, `label`, `themed_button`, etc.) that return `impl Bundle` and compose with Bevy's `children![]` macro. This is the preferred, idiomatic approach.

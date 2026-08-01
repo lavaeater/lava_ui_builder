@@ -6,7 +6,6 @@ use bevy::ecs::event::EntityEvent;
 use bevy::ecs::system::IntoObserverSystem;
 use bevy::feathers::cursor::EntityCursor;
 use bevy::feathers::font_styles::InheritableFont;
-use bevy::feathers::handle_or_path::HandleOrPath;
 use bevy::input_focus::tab_navigation::TabIndex;
 use bevy::picking::hover::Hovered;
 use bevy::prelude::*;
@@ -965,8 +964,9 @@ impl<'w, 's> UIBuilder<'w, 's> {
             EntityCursor::System(SystemCursorIcon::Pointer),
             TabIndex(0),
             InheritableFont {
-                font: HandleOrPath::Handle(btn.font.clone()),
-                font_size: btn.font_size,
+                font: btn.font.clone(),
+                font_size: FontSize::from(btn.font_size),
+                weight: Default::default(),
             },
         );
         self.spawn_button_inner(text, bundle, move |commands, entity| {
