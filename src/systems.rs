@@ -137,19 +137,72 @@ pub fn world_follower_system(
     transforms: Query<&GlobalTransform>,
     mut commands: Commands,
     camera_q: Query<(&Camera, &GlobalTransform), With<Camera3d>>,
+    ui_scale: Res<UiScale>,
 ) {
     let Ok((camera, camera_transform)) = camera_q.single() else {
         return;
     };
+    let origin = camera
+        .logical_viewport_rect()
+        .map(|rect| rect.min)
+        .unwrap_or(Vec2::ZERO);
     for (entity, follower, mut node) in followers.iter_mut() {
         let Ok(tr) = transforms.get(follower.target) else {
             commands.entity(entity).despawn();
             continue;
         };
         if let Ok(pos) = camera.world_to_viewport(camera_transform, tr.translation()) {
-            node.left = Val::Px((pos.x + follower.offset.x).round());
-            node.top = Val::Px((pos.y + follower.offset.y).round());
+            node.left = Val::Px(follower_axis(origin.x, pos.x, follower.offset.x, ui_scale.0));
+            node.top = Val::Px(follower_axis(origin.y, pos.y, follower.offset.y, ui_scale.0));
         }
+    }
+}
+
+/// Turn a viewport-relative screen coordinate into the `Val::Px` that puts a UI node
+/// there. Two corrections, both invisible in the common case of a full-window camera at
+/// scale 1:
+///
+/// - **Viewport origin.** `Camera::world_to_viewport` is relative to the camera's
+///   viewport, but the node is laid out in window space. A camera clipped to part of the
+///   window — a split-pane editor, a minimap — offsets every follower by the pane origin
+///   unless it is added back.
+/// - **`UiScale`.** It multiplies every `Val::Px`, so a node placed at a raw screen
+///   coordinate renders at `scale` times that, dragged toward the top-left corner. It has
+///   to be divided out. `offset` stays outside the division: it is authored in UI units
+///   (it centres the node on its target) and is scaled along with the node's own size.
+fn follower_axis(origin: f32, viewport_pos: f32, offset: f32, ui_scale: f32) -> f32 {
+    let scale = if ui_scale > 0.0 { ui_scale } else { 1.0 };
+    ((origin + viewport_pos) / scale + offset).round()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::follower_axis;
+
+    #[test]
+    fn a_full_window_camera_at_scale_one_is_just_the_offset() {
+        assert_eq!(follower_axis(0.0, 500.0, -30.0, 1.0), 470.0);
+    }
+
+    /// The pane origin has to survive the scale division, or a follower in a split-pane
+    /// screen lands short of its target by a fraction of the pane width.
+    #[test]
+    fn a_clipped_viewport_lands_on_the_target_not_the_window_corner() {
+        // Pane starts 330px in; target 439px into the pane; UI drawn at 0.66.
+        let left = follower_axis(330.0, 439.0, 0.0, 0.66);
+        assert_eq!((left * 0.66).round(), 769.0, "renders back onto the target");
+    }
+
+    #[test]
+    fn ui_scale_is_divided_out_so_the_node_renders_where_asked() {
+        let left = follower_axis(0.0, 900.0, 0.0, 0.5);
+        assert_eq!(left, 1800.0);
+        assert_eq!(left * 0.5, 900.0, "round-trips through the scale");
+    }
+
+    #[test]
+    fn a_degenerate_scale_falls_back_to_one_instead_of_diverging() {
+        assert_eq!(follower_axis(0.0, 500.0, 0.0, 0.0), 500.0);
     }
 }
 
