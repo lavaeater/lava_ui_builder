@@ -175,6 +175,22 @@ fn follower_axis(origin: f32, viewport_pos: f32, offset: f32, ui_scale: f32) -> 
     ((origin + viewport_pos) / scale + offset).round()
 }
 
+/// Apply `InteractionPalette` colors based on `Interaction` state changes.
+pub fn apply_interaction_palette(
+    mut query: Query<
+        (&Interaction, &InteractionPalette, &mut BackgroundColor),
+        Changed<Interaction>,
+    >,
+) {
+    for (interaction, palette, mut bg) in &mut query {
+        *bg = BackgroundColor(match *interaction {
+            Interaction::Pressed => palette.pressed,
+            Interaction::Hovered => palette.hovered,
+            Interaction::None => palette.none,
+        });
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::follower_axis;
@@ -203,22 +219,6 @@ mod tests {
     #[test]
     fn a_degenerate_scale_falls_back_to_one_instead_of_diverging() {
         assert_eq!(follower_axis(0.0, 500.0, 0.0, 0.0), 500.0);
-    }
-}
-
-/// Apply `InteractionPalette` colors based on `Interaction` state changes.
-pub fn apply_interaction_palette(
-    mut query: Query<
-        (&Interaction, &InteractionPalette, &mut BackgroundColor),
-        Changed<Interaction>,
-    >,
-) {
-    for (interaction, palette, mut bg) in &mut query {
-        *bg = BackgroundColor(match *interaction {
-            Interaction::Pressed => palette.pressed,
-            Interaction::Hovered => palette.hovered,
-            Interaction::None => palette.none,
-        });
     }
 }
 

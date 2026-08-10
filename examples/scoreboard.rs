@@ -71,7 +71,7 @@ fn setup_ui(commands: Commands, theme: Res<LavaTheme>, players: Query<&PlayerSta
 
     // Sort players by kills descending
     let mut sorted: Vec<_> = players.iter().collect();
-    sorted.sort_by(|a, b| b.kills.cmp(&a.kills));
+    sorted.sort_by_key(|p| std::cmp::Reverse(p.kills));
 
     ui.with_child(|table| {
         table

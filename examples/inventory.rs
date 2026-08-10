@@ -21,7 +21,8 @@ const SLOT_SIZE: f32 = 84.0;
 const GAP: f32 = 6.0;
 
 // (name, count, color_rgb, col, row) — col/row are 1-based
-const ITEMS: &[(&str, u32, (f32, f32, f32), i16, i16)] = &[
+type ItemDef = (&'static str, u32, (f32, f32, f32), i16, i16);
+const ITEMS: &[ItemDef] = &[
     ("Sword",  1,  (0.75, 0.20, 0.20), 1, 1),
     ("Shield", 1,  (0.20, 0.40, 0.80), 2, 1),
     ("Potion", 5,  (0.70, 0.20, 0.65), 3, 1),
@@ -48,7 +49,7 @@ fn setup_camera(mut commands: Commands) {
 // ── Marker components ─────────────────────────────────────────────────────────
 
 #[derive(Component)]
-struct InventoryItem { name: &'static str }
+struct InventoryItem;
 
 #[derive(Component)] struct TooltipRoot;
 #[derive(Component)] struct TooltipText;
@@ -154,8 +155,8 @@ fn spawn_slot(commands: &mut Commands, col: i16, row: i16, item: Item) -> Entity
         Pickable { should_block_lower: false, is_hoverable: true },
     ));
 
-    if let Some((name, _, _)) = item {
-        slot.insert(InventoryItem { name });
+    if item.is_some() {
+        slot.insert(InventoryItem);
     }
 
     // Hover → show tooltip with item name
