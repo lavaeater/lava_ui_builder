@@ -121,7 +121,7 @@ fn setup_ui(commands: Commands, theme: Res<LavaTheme>, players: Query<&PlayerSta
 
                 // KD ratio
                 let kd = stats.kills as f32 / (stats.deaths as f32).max(1.0);
-                cell(row, &format!("{:.2}", kd), 70.0, Color::srgb(1.0, 0.9, 0.4));
+                cell(row, &format!("{kd:.2}"), 70.0, Color::srgb(1.0, 0.9, 0.4));
             });
         }
     });

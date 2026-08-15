@@ -966,7 +966,7 @@ impl<'w, 's> UIBuilder<'w, 's> {
             InheritableFont {
                 font: btn.font.clone(),
                 font_size: FontSize::from(btn.font_size),
-                weight: Default::default(),
+                weight: FontWeight::default(),
             },
         );
         self.spawn_button_inner(text, bundle, move |commands, entity| {

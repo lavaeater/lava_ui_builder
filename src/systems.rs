@@ -191,6 +191,7 @@ pub fn apply_interaction_palette(
 }
 
 #[cfg(test)]
+#[allow(clippy::float_cmp)] // exact, representable f32 values in assert_eq!
 mod tests {
     use super::follower_axis;
 
