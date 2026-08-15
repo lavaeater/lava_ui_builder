@@ -1007,7 +1007,7 @@ impl<'w, 's> UIBuilder<'w, 's> {
                     .bg_color(toggle_bg);
 
                 let arrow = if collapsed { "▶" } else { "▼" };
-                btn.add_text_child(format!("{} {}", arrow, label_owned), Some(crate::TextStyle::size(12.0)));
+                btn.add_text_child(format!("{arrow} {label_owned}"), Some(crate::TextStyle::size(12.0)));
             });
 
             ui.with_child(|content| {

@@ -16,7 +16,26 @@ bevy = { version = "0.19.0", default-features = false, features = ["ui", "bevy_f
 bevy = { version = "0.19.0", default-features = true }
 
 [lints.clippy]
+pedantic = { level = "warn", priority = -1 }
+
+# Bevy idioms that pedantic dislikes.
+needless_pass_by_value = "allow"
+used_underscore_binding = "allow"
+wildcard_imports = "allow"
+doc_markdown = "allow"
+
+# Fluent builder API: every method returns Self by design.
+must_use_candidate = "allow"
+return_self_not_must_use = "allow"
+
+# Deliberate numeric conversions in layout math.
+cast_precision_loss = "allow"
+cast_possible_truncation = "allow"
+cast_sign_loss = "allow"
+cast_possible_wrap = "allow"
+
 too_many_arguments = "allow"
+too_many_lines = "allow"
 
 [[example]]
 name = "basic_layout"

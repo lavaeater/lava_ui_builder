@@ -45,11 +45,11 @@ pub fn handle_collapse_toggle(
     mut collapsible_query: Query<&mut Collapsible>,
     theme: Option<Res<LavaTheme>>,
 ) {
-    let (bg_normal, bg_hovered, bg_pressed) = theme.as_ref().map(|t| {
-        (t.button.collapsible_bg, t.button.collapsible_bg_hovered, t.button.collapsible_bg_pressed)
-    }).unwrap_or_else(|| {
+    let (bg_normal, bg_hovered, bg_pressed) = theme.as_ref().map_or_else(|| {
         let d = crate::ButtonTheme::default();
         (d.collapsible_bg, d.collapsible_bg_hovered, d.collapsible_bg_pressed)
+    }, |t| {
+        (t.button.collapsible_bg, t.button.collapsible_bg_hovered, t.button.collapsible_bg_pressed)
     });
 
     for (interaction, toggle_btn, mut bg_color) in &mut interaction_query {
@@ -74,11 +74,11 @@ pub fn handle_collapse_toggle(
 pub fn update_collapsible_visibility(
     collapsible_query: Query<(Entity, &Collapsible), Changed<Collapsible>>,
     mut content_query: Query<(&CollapsibleContent, &mut Node)>,
-    mut button_text_query: Query<(&CollapseToggleButton, &Children)>,
+    button_text_query: Query<(&CollapseToggleButton, &Children)>,
     mut text_query: Query<&mut Text>,
 ) {
     for (collapsible_entity, collapsible) in collapsible_query.iter() {
-        for (content, mut node) in content_query.iter_mut() {
+        for (content, mut node) in &mut content_query {
             if content.parent == collapsible_entity {
                 node.display = if collapsible.collapsed {
                     Display::None
@@ -88,7 +88,7 @@ pub fn update_collapsible_visibility(
             }
         }
 
-        for (toggle_btn, children) in button_text_query.iter_mut() {
+        for (toggle_btn, children) in button_text_query {
             if toggle_btn.target == collapsible_entity {
                 for child in children.iter() {
                     if let Ok(mut text) = text_query.get_mut(child) {
@@ -144,9 +144,8 @@ pub fn world_follower_system(
     };
     let origin = camera
         .logical_viewport_rect()
-        .map(|rect| rect.min)
-        .unwrap_or(Vec2::ZERO);
-    for (entity, follower, mut node) in followers.iter_mut() {
+        .map_or(Vec2::ZERO, |rect| rect.min);
+    for (entity, follower, mut node) in &mut followers {
         let Ok(tr) = transforms.get(follower.target) else {
             commands.entity(entity).despawn();
             continue;

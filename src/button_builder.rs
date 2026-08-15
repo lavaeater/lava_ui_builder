@@ -17,7 +17,7 @@ use crate::{feathers_button_fn, ButtonBuilder, ButtonProps, ButtonVariant, UIBui
 // ButtonBuilder — for imperative button customization via add_themed_button()
 // ============================================================================
 
-impl<'a, 'w, 's> ButtonBuilder<'a, 'w, 's> {
+impl ButtonBuilder<'_, '_, '_> {
     pub fn text(&mut self, text: impl Into<String>) -> &mut Self {
         if let Some(text_entity) = self.text_entity {
             self.ui.commands.entity(text_entity).insert(Text::new(text.into()));
@@ -115,7 +115,7 @@ impl<'a, 'w, 's> ButtonBuilder<'a, 'w, 's> {
 // Feathers-style button helpers using observe() pattern
 // ============================================================================
 
-impl<'w, 's> UIBuilder<'w, 's> {
+impl UIBuilder<'_, '_> {
     /// Add a Feathers-style button with an observer for the Activate event.
     pub fn feathers_button<M>(
         &mut self,
