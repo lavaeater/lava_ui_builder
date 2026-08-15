@@ -48,7 +48,7 @@ impl Default for ButtonTheme {
             bg_hovered: Color::srgb(0.384, 0.600, 0.820),
             bg_pressed: Color::srgb(0.239, 0.286, 0.600),
             text_color: Color::from(WHITE),
-            font: Default::default(),
+            font: Handle::default(),
             font_size: 40.0,
             border_radius: BorderRadius::MAX,
             border_width: px(2.0),
@@ -75,7 +75,7 @@ pub struct TextTheme {
 impl Default for TextTheme {
     fn default() -> Self {
         Self {
-            font: Default::default(),
+            font: Handle::default(),
             header_size: 40.0,
             label_size: 24.0,
             header_color: Color::srgb(0.988, 0.984, 0.800),
@@ -149,7 +149,7 @@ impl TextStyle {
     }
 }
 
-/// Convenience helpers matching the palette module style.
+// Convenience helpers matching the palette module style.
 // pub fn px(val: f32) -> Val {
 //     Val::Px(val)
 // }
@@ -513,7 +513,7 @@ fn adapt_ui_scale(
     theme: Option<Res<LavaTheme>>,
 ) {
     for event in message_reader.read() {
-        let base_width = theme.as_ref().map(|t| t.ui_width).unwrap_or(1920.0);
+        let base_width = theme.as_ref().map_or(1920.0, |t| t.ui_width);
         ui_scale.0 = (event.width / base_width).max(0.5);
         info!("Ui scale: {}", ui_scale.0);
     }
