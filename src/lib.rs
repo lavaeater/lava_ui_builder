@@ -371,6 +371,14 @@ pub struct CollapsibleContent {
     pub parent: Entity,
 }
 
+/// Where `UIBuilder::with_collapsible`'s toggle button renders relative to its
+/// content -- see `UIBuilder::with_collapsible_toggle_at_bottom`.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum CollapsibleTogglePosition {
+    Top,
+    Bottom,
+}
+
 // ============================================================================
 // Progress bar widget
 // ============================================================================

@@ -1,6 +1,6 @@
 use crate::{
     ButtonBuilder, ButtonVariant, CollapseToggleButton, Collapsible, CollapsibleContent,
-    InteractionPalette, LavaTheme, TextStyle, UIBuilder,
+    CollapsibleTogglePosition, InteractionPalette, LavaTheme, TextStyle, UIBuilder,
 };
 use bevy::ecs::event::EntityEvent;
 use bevy::ecs::system::IntoObserverSystem;
@@ -984,6 +984,29 @@ impl<'w, 's> UIBuilder<'w, 's> {
         initially_collapsed: bool,
         f: F,
     ) -> &mut Self {
+        self.with_collapsible_toggle_at(label, initially_collapsed, CollapsibleTogglePosition::Top, f)
+    }
+
+    /// Same as [`with_collapsible`](Self::with_collapsible), but the toggle button
+    /// renders after the content instead of before it -- for panels anchored to the
+    /// top of the screen, putting the toggle at the panel's bottom edge (closest to
+    /// the rest of the UI/board) reads better than one pinned to the very top.
+    pub fn with_collapsible_toggle_at_bottom<F: FnOnce(&mut Self)>(
+        &mut self,
+        label: &str,
+        initially_collapsed: bool,
+        f: F,
+    ) -> &mut Self {
+        self.with_collapsible_toggle_at(label, initially_collapsed, CollapsibleTogglePosition::Bottom, f)
+    }
+
+    fn with_collapsible_toggle_at<F: FnOnce(&mut Self)>(
+        &mut self,
+        label: &str,
+        initially_collapsed: bool,
+        toggle_position: CollapsibleTogglePosition,
+        f: F,
+    ) -> &mut Self {
         let label_owned = label.to_string();
         let collapsed = initially_collapsed;
 
@@ -997,29 +1020,43 @@ impl<'w, 's> UIBuilder<'w, 's> {
             ui.display_flex().flex_column();
 
             let toggle_bg = ui.theme.button.collapsible_bg;
-            ui.with_child(|btn| {
-                btn.insert(Button);
-                btn.insert(CollapseToggleButton {
-                    target: collapsible_entity,
-                });
-                btn.padding_all_px(8.0)
-                    .margin(UiRect::bottom(Val::Px(4.0)))
-                    .bg_color(toggle_bg);
+            let spawn_toggle = |ui: &mut Self| {
+                ui.with_child(|btn| {
+                    btn.insert(Button);
+                    btn.insert(CollapseToggleButton {
+                        target: collapsible_entity,
+                    });
+                    btn.padding_all_px(8.0)
+                        .margin(UiRect::bottom(Val::Px(4.0)))
+                        .bg_color(toggle_bg);
 
-                let arrow = if collapsed { "▶" } else { "▼" };
-                btn.add_text_child(format!("{arrow} {label_owned}"), Some(crate::TextStyle::size(12.0)));
-            });
-
-            ui.with_child(|content| {
-                content.insert(CollapsibleContent {
-                    parent: collapsible_entity,
+                    let arrow = if collapsed { "▶" } else { "▼" };
+                    btn.add_text_child(format!("{arrow} {label_owned}"), Some(crate::TextStyle::size(12.0)));
                 });
-                content.display_flex().flex_column().width_percent(100.0);
-                if collapsed {
-                    content.display(Display::None);
+            };
+            let spawn_content = |ui: &mut Self| {
+                ui.with_child(|content| {
+                    content.insert(CollapsibleContent {
+                        parent: collapsible_entity,
+                    });
+                    content.display_flex().flex_column().width_percent(100.0);
+                    if collapsed {
+                        content.display(Display::None);
+                    }
+                    f(content);
+                });
+            };
+
+            match toggle_position {
+                CollapsibleTogglePosition::Top => {
+                    spawn_toggle(ui);
+                    spawn_content(ui);
                 }
-                f(content);
-            });
+                CollapsibleTogglePosition::Bottom => {
+                    spawn_content(ui);
+                    spawn_toggle(ui);
+                }
+            }
         })
     }
 
