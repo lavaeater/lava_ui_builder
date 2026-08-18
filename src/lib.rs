@@ -101,8 +101,8 @@ impl Default for LavaTheme {
         Self {
             button: ButtonTheme::default(),
             text: TextTheme::default(),
-            bg_color: Color::srgba(0.5, 0.5, 0.5, 0.25),
-            border_color: Color::srgba(0.2, 0.2, 0.2, 0.25),
+            bg_color: Color::srgba(0.5, 0.5, 0.5, 0.9),
+            border_color: Color::srgba(0.2, 0.2, 0.2, 0.9),
             ui_width: 1920.0,
             ui_height: 1080.0,
         }
