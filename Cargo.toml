@@ -9,8 +9,14 @@ license = "MIT OR Apache-2.0"
 default = []
 feathers = []
 
+# "ui" is expanded by hand (ui_api, ui_bevy_render) instead of used directly:
+# it pulls in "default_platform", which hardcodes "android-game-activity" --
+# that conflicts with the civilization game's `mobile` crate, which needs
+# "android-native-activity" instead (Cargo unions features for a shared
+# dependency across the whole build). See civilization/Cargo.toml for the
+# matching expansion on the consumer side.
 [dependencies]
-bevy = { version = "0.18.0", default-features = false, features = ["ui", "experimental_bevy_feathers"] }
+bevy = { version = "0.18.0", default-features = false, features = ["ui_api", "ui_bevy_render", "experimental_bevy_feathers"] }
 
 [dev-dependencies]
 bevy = { version = "0.18.0", default-features = true }
