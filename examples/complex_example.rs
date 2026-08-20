@@ -14,8 +14,7 @@ use bevy::picking::hover::HoverMap;
 use bevy::platform::collections::HashMap;
 use bevy::prelude::*;
 use lava_ui_builder::{
-    CollapseToggleButton, Collapsible, CollapsibleContent, LavaTheme, TextStyle,
-    UIBuilder,
+    CollapseToggleButton, Collapsible, CollapsibleContent, LavaTheme, TextStyle, UIBuilder,
 };
 
 // ============================================================================
@@ -172,10 +171,7 @@ fn spawn_mock_players(mut commands: Commands) {
         }
 
         commands.spawn((
-            Player {
-                faction,
-                is_human,
-            },
+            Player { faction, is_human },
             Name::new(format!("{} of {:?}", ruler, faction)),
             PlayerCards { stacks },
         ));
@@ -351,7 +347,11 @@ fn build_trade_card(ui: &mut UIBuilder, stack: &CardStack) {
         } else {
             card.add_text_child(&stack.name, Some(TextStyle::size(medium_font)));
             card.add_text_child(
-                if stack.is_tradeable { "Tradeable" } else { "Non-Tradeable" },
+                if stack.is_tradeable {
+                    "Tradeable"
+                } else {
+                    "Non-Tradeable"
+                },
                 Some(TextStyle::size(small_font)),
             );
         }

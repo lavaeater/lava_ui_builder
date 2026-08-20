@@ -42,21 +42,19 @@ fn setup_ui(mut commands: Commands, theme: Res<LavaTheme>) {
     // Spawn the root container, then add themed_button children individually
     // (themed_button uses SpawnWith internally, so we add them as children).
     let root = commands
-        .spawn((
-            ui_root_with(
-                "Bundle Buttons",
-                Node {
-                    position_type: PositionType::Absolute,
-                    width: Val::Percent(50.0),
-                    height: Val::Percent(100.0),
-                    align_items: AlignItems::Center,
-                    justify_content: JustifyContent::Center,
-                    flex_direction: FlexDirection::Column,
-                    row_gap: Val::Px(16.0),
-                    ..default()
-                },
-            ),
-        ))
+        .spawn((ui_root_with(
+            "Bundle Buttons",
+            Node {
+                position_type: PositionType::Absolute,
+                width: Val::Percent(50.0),
+                height: Val::Percent(100.0),
+                align_items: AlignItems::Center,
+                justify_content: JustifyContent::Center,
+                flex_direction: FlexDirection::Column,
+                row_gap: Val::Px(16.0),
+                ..default()
+            },
+        ),))
         .id();
 
     let hdr = commands.spawn(header("Bundle Buttons", &theme.text)).id();
@@ -144,9 +142,13 @@ fn setup_ui(mut commands: Commands, theme: Res<LavaTheme>) {
         external_function();
     });
 
-    ui.feathers_button_primary("Primary", |_activate: On<Activate>| {
-        info!("Feathers primary button activated");
-    }, |_btn| {});
+    ui.feathers_button_primary(
+        "Primary",
+        |_activate: On<Activate>| {
+            info!("Feathers primary button activated");
+        },
+        |_btn| {},
+    );
 
     ui.feathers_button_disabled("Disabled", |_activate: On<Activate>| {
         info!("This should not fire");

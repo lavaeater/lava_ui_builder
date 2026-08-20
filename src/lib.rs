@@ -11,12 +11,12 @@ mod button_builder;
 pub mod systems;
 
 // Re-export feathers types for external use
-pub use bevy::feathers::controls::{button as feathers_button_fn, ButtonProps, ButtonVariant};
+pub use bevy::feathers::controls::{ButtonProps, ButtonVariant, button as feathers_button_fn};
 pub use bevy::feathers::rounded_corners::RoundedCorners;
 pub use bevy::feathers::theme::ThemedText;
 pub use bevy::ui::InteractionDisabled;
 pub use bevy::ui_widgets::Activate;
-use bevy::window::{WindowResized};
+use bevy::window::WindowResized;
 // ============================================================================
 // Theme types — slim replacements for the old NodeDef/NodePartial/ButtonDef/etc.
 // ============================================================================
@@ -135,17 +135,27 @@ pub struct TextStyle {
 impl TextStyle {
     /// Returns a `TextStyle` with only font size set.
     pub fn size(font_size: f32) -> Self {
-        Self { font_size: Some(font_size), ..default() }
+        Self {
+            font_size: Some(font_size),
+            ..default()
+        }
     }
 
     /// Returns a `TextStyle` with only color set.
     pub fn color(color: Color) -> Self {
-        Self { color: Some(color), ..default() }
+        Self {
+            color: Some(color),
+            ..default()
+        }
     }
 
     /// Returns a `TextStyle` with font size and color set.
     pub fn size_color(font_size: f32, color: Color) -> Self {
-        Self { font_size: Some(font_size), color: Some(color), ..default() }
+        Self {
+            font_size: Some(font_size),
+            color: Some(color),
+            ..default()
+        }
     }
 }
 
@@ -153,13 +163,13 @@ impl TextStyle {
 // pub fn px(val: f32) -> Val {
 //     Val::Px(val)
 // }
-// 
+//
 // pub fn percent(val: f32) -> Val {
 //     Val::Percent(val)
 // }
 
 pub fn rect_all(val: Val) -> UiRect {
-  UiRect::all(val)
+    UiRect::all(val)
 }
 
 /// A root UI node that fills the window and centers its content.
@@ -411,7 +421,13 @@ pub struct WorldFollower {
 /// Spawn a horizontal progress bar with an optional [`ProgressBar`] component for dynamic updates.
 ///
 /// `value` is the initial fill fraction (0.0–1.0).
-pub fn progress_bar(value: f32, width: f32, height: f32, fill_color: Color, bg_color: Color) -> impl Bundle {
+pub fn progress_bar(
+    value: f32,
+    width: f32,
+    height: f32,
+    fill_color: Color,
+    bg_color: Color,
+) -> impl Bundle {
     let pct = value.clamp(0.0, 1.0) * 100.0;
     (
         Name::new("ProgressBar"),
@@ -465,28 +481,29 @@ pub fn spawn_list_item<M>(
     } else {
         Color::srgb(0.65, 0.80, 0.65)
     };
-    parent.spawn((
-        Node {
-            width: percent(100.0),
-            padding: UiRect::axes(px(6.0), px(4.0)),
-            border_radius: BorderRadius::all(px(3.0)),
-            ..default()
-        },
-        BackgroundColor(bg),
-        InteractionPalette {
-            none: bg,
-            hovered: Color::srgba(0.20, 0.50, 0.28, 0.95),
-            pressed: Color::srgba(0.12, 0.32, 0.18, 1.0),
-        },
-        bevy::picking::hover::Hovered::default(),
-        bevy::ui_widgets::Button,
-    ))
-    .with_child((
-        Text::new(name.into()),
-        TextFont::default().with_font_size(11.0),
-        TextColor(tc),
-    ))
-    .observe(handler);
+    parent
+        .spawn((
+            Node {
+                width: percent(100.0),
+                padding: UiRect::axes(px(6.0), px(4.0)),
+                border_radius: BorderRadius::all(px(3.0)),
+                ..default()
+            },
+            BackgroundColor(bg),
+            InteractionPalette {
+                none: bg,
+                hovered: Color::srgba(0.20, 0.50, 0.28, 0.95),
+                pressed: Color::srgba(0.12, 0.32, 0.18, 1.0),
+            },
+            bevy::picking::hover::Hovered::default(),
+            bevy::ui_widgets::Button,
+        ))
+        .with_child((
+            Text::new(name.into()),
+            TextFont::default().with_font_size(11.0),
+            TextColor(tc),
+        ))
+        .observe(handler);
 }
 
 // ============================================================================

@@ -242,19 +242,19 @@ impl<'w, 's> UIBuilder<'w, 's> {
     pub fn size(&mut self, w: Val, h: Val) -> &mut Self {
         self.width(w).height(h)
     }
-    
+
     pub fn size_scaled(&mut self, w_percent: f32, h_percent: f32) -> &mut Self {
         let width = w_percent * self.theme.ui_width / 100.0;
         let height = h_percent * self.theme.ui_height / 100.0;
         self.width(px(width)).height(px(height))
     }
-    
-    pub fn width_scaled(&mut self, w_percent: f32)-> &mut Self {
+
+    pub fn width_scaled(&mut self, w_percent: f32) -> &mut Self {
         let width = w_percent * self.theme.ui_width / 100.0;
-        self.width(px(width)) 
+        self.width(px(width))
     }
 
-    pub fn height_scaled(&mut self, h_percent: f32)-> &mut Self {
+    pub fn height_scaled(&mut self, h_percent: f32) -> &mut Self {
         let height = h_percent * self.theme.ui_height / 100.0;
         self.height(px(height))
     }
@@ -299,7 +299,6 @@ impl<'w, 's> UIBuilder<'w, 's> {
         self.padding(UiRect::all(v))
     }
 
-
     pub fn padding_top(&mut self, v: Val) -> &mut Self {
         self.modify_node(move |mut n| n.padding.top = v)
     }
@@ -310,7 +309,7 @@ impl<'w, 's> UIBuilder<'w, 's> {
     pub fn padding_right(&mut self, v: Val) -> &mut Self {
         self.modify_node(move |mut n| n.padding.right = v)
     }
-    
+
     pub fn padding_bottom(&mut self, v: Val) -> &mut Self {
         self.modify_node(move |mut n| n.padding.bottom = v)
     }
@@ -448,11 +447,7 @@ impl<'w, 's> UIBuilder<'w, 's> {
 
     /// Add a text component to the current entity, with optional style overrides.
     /// `None` for `style` uses all theme defaults.
-    pub fn with_text(
-        &mut self,
-        text: impl Into<String>,
-        style: Option<TextStyle>,
-    ) -> &mut Self {
+    pub fn with_text(&mut self, text: impl Into<String>, style: Option<TextStyle>) -> &mut Self {
         let theme = &self.theme.text;
         let s = style.unwrap_or_default();
         let bundle = (
@@ -461,7 +456,10 @@ impl<'w, 's> UIBuilder<'w, 's> {
                 .with_font(s.font.unwrap_or_else(|| theme.font.clone()))
                 .with_font_size(s.font_size.unwrap_or(theme.label_size)),
             TextColor(s.color.unwrap_or(theme.label_color)),
-            TextLayout::new(s.justify.unwrap_or_default(), s.line_break.unwrap_or_default()),
+            TextLayout::new(
+                s.justify.unwrap_or_default(),
+                s.line_break.unwrap_or_default(),
+            ),
         );
         self.commands.entity(self.current_entity).insert(bundle);
         self
@@ -572,7 +570,10 @@ impl<'w, 's> UIBuilder<'w, 's> {
     pub fn themed_header(&mut self, text: impl Into<String>) -> &mut Self {
         let t = self.theme.text.clone();
         self.with_child(|c| {
-            c.with_text(text, Some(crate::TextStyle::size_color(t.header_size, t.header_color)));
+            c.with_text(
+                text,
+                Some(crate::TextStyle::size_color(t.header_size, t.header_color)),
+            );
         })
     }
 
@@ -580,7 +581,10 @@ impl<'w, 's> UIBuilder<'w, 's> {
     pub fn themed_label(&mut self, text: impl Into<String>) -> &mut Self {
         let t = self.theme.text.clone();
         self.with_child(|c| {
-            c.with_text(text, Some(crate::TextStyle::size_color(t.label_size, t.label_color)));
+            c.with_text(
+                text,
+                Some(crate::TextStyle::size_color(t.label_size, t.label_color)),
+            );
         })
     }
 
@@ -648,7 +652,9 @@ impl<'w, 's> UIBuilder<'w, 's> {
 
     /// Add a flex_grow(1) spacer child to push siblings apart.
     pub fn spacer(&mut self) -> &mut Self {
-        self.with_child(|c| { c.with_flex_grow(1.0); })
+        self.with_child(|c| {
+            c.with_flex_grow(1.0);
+        })
     }
 
     // ========================================================================
@@ -657,14 +663,19 @@ impl<'w, 's> UIBuilder<'w, 's> {
 
     /// Full-height fixed-width column panel with padding, gap, and background.
     /// Matches the sidebar pattern used on every tool screen.
-    pub fn side_panel<F: FnOnce(&mut Self)>(&mut self, width_px: f32, bg: Color, f: F) -> &mut Self {
+    pub fn side_panel<F: FnOnce(&mut Self)>(
+        &mut self,
+        width_px: f32,
+        bg: Color,
+        f: F,
+    ) -> &mut Self {
         self.with_child(|c| {
             c.width_px(width_px)
-             .height_percent(100.0)
-             .flex_column()
-             .padding_all_px(6.0)
-             .row_gap_px(3.0)
-             .bg_color(bg);
+                .height_percent(100.0)
+                .flex_column()
+                .padding_all_px(6.0)
+                .row_gap_px(3.0)
+                .bg_color(bg);
             f(c);
         })
     }
@@ -672,20 +683,29 @@ impl<'w, 's> UIBuilder<'w, 's> {
     /// Full-width scrollable flex-column list that grows to fill available space.
     pub fn scrollable_list<F: FnOnce(&mut Self)>(&mut self, f: F) -> &mut Self {
         self.with_child(|c| {
-            c.display_flex().flex_column().gap_px(2.0)
-             .with_flex_grow(1.0).width_percent(100.0)
-             .overflow_scroll_y();
+            c.display_flex()
+                .flex_column()
+                .gap_px(2.0)
+                .with_flex_grow(1.0)
+                .width_percent(100.0)
+                .overflow_scroll_y();
             f(c);
         })
     }
 
     /// Like `scrollable_list` but capped at `max_height_px`.
-    pub fn scrollable_list_bounded<F: FnOnce(&mut Self)>(&mut self, max_height_px: f32, f: F) -> &mut Self {
+    pub fn scrollable_list_bounded<F: FnOnce(&mut Self)>(
+        &mut self,
+        max_height_px: f32,
+        f: F,
+    ) -> &mut Self {
         self.with_child(|c| {
-            c.display_flex().flex_column().gap_px(2.0)
-             .width_percent(100.0)
-             .max_height_px(max_height_px)
-             .overflow_scroll_y();
+            c.display_flex()
+                .flex_column()
+                .gap_px(2.0)
+                .width_percent(100.0)
+                .max_height_px(max_height_px)
+                .overflow_scroll_y();
             f(c);
         })
     }
@@ -711,17 +731,17 @@ impl<'w, 's> UIBuilder<'w, 's> {
         let name = name.into();
         self.with_child(|c| {
             c.width_percent(100.0)
-             .padding(UiRect::axes(Val::Px(6.0), Val::Px(4.0)))
-             .border_radius_all_px(3.0)
-             .bg_color(bg)
-             .insert(InteractionPalette {
-                 none: bg,
-                 hovered: Color::srgba(0.20, 0.50, 0.28, 0.95),
-                 pressed: Color::srgba(0.12, 0.32, 0.18, 1.0),
-             })
-             .insert(bevy::picking::hover::Hovered::default())
-             .insert(bevy::ui_widgets::Button)
-             .observe(handler);
+                .padding(UiRect::axes(Val::Px(6.0), Val::Px(4.0)))
+                .border_radius_all_px(3.0)
+                .bg_color(bg)
+                .insert(InteractionPalette {
+                    none: bg,
+                    hovered: Color::srgba(0.20, 0.50, 0.28, 0.95),
+                    pressed: Color::srgba(0.12, 0.32, 0.18, 1.0),
+                })
+                .insert(bevy::picking::hover::Hovered::default())
+                .insert(bevy::ui_widgets::Button)
+                .observe(handler);
             c.with_child(|t| {
                 t.with_text(name, Some(crate::TextStyle::size_color(11.0, tc)));
             });
@@ -738,19 +758,27 @@ impl<'w, 's> UIBuilder<'w, 's> {
         let glyph = glyph.into();
         self.with_child(|c| {
             c.size_px(size_px, size_px)
-             .display_flex().justify_center().align_items_center()
-             .border_radius_all_px(3.0)
-             .bg_color(Color::srgba(0.25, 0.25, 0.30, 0.85))
-             .insert(InteractionPalette {
-                 none:    Color::srgba(0.25, 0.25, 0.30, 0.85),
-                 hovered: Color::srgba(0.40, 0.40, 0.50, 0.95),
-                 pressed: Color::srgba(0.20, 0.20, 0.25, 1.0),
-             })
-             .insert(bevy::picking::hover::Hovered::default())
-             .insert(bevy::ui_widgets::Button)
-             .observe(handler);
+                .display_flex()
+                .justify_center()
+                .align_items_center()
+                .border_radius_all_px(3.0)
+                .bg_color(Color::srgba(0.25, 0.25, 0.30, 0.85))
+                .insert(InteractionPalette {
+                    none: Color::srgba(0.25, 0.25, 0.30, 0.85),
+                    hovered: Color::srgba(0.40, 0.40, 0.50, 0.95),
+                    pressed: Color::srgba(0.20, 0.20, 0.25, 1.0),
+                })
+                .insert(bevy::picking::hover::Hovered::default())
+                .insert(bevy::ui_widgets::Button)
+                .observe(handler);
             c.with_child(|t| {
-                t.with_text(glyph, Some(crate::TextStyle::size_color(12.0, Color::srgb(0.9, 0.9, 0.9))));
+                t.with_text(
+                    glyph,
+                    Some(crate::TextStyle::size_color(
+                        12.0,
+                        Color::srgb(0.9, 0.9, 0.9),
+                    )),
+                );
             });
         })
     }
@@ -762,18 +790,26 @@ impl<'w, 's> UIBuilder<'w, 's> {
     ) -> &mut Self {
         self.with_child(|c| {
             c.size_px(16.0, 16.0)
-             .display_flex().justify_center().align_items_center()
-             .bg_color(Color::srgba(0.4, 0.1, 0.1, 0.8))
-             .insert(InteractionPalette {
-                 none:    Color::srgba(0.4, 0.1, 0.1, 0.8),
-                 hovered: Color::srgba(0.6, 0.15, 0.15, 0.9),
-                 pressed: Color::srgba(0.3, 0.08, 0.08, 1.0),
-             })
-             .insert(bevy::picking::hover::Hovered::default())
-             .insert(bevy::ui_widgets::Button)
-             .observe(handler);
+                .display_flex()
+                .justify_center()
+                .align_items_center()
+                .bg_color(Color::srgba(0.4, 0.1, 0.1, 0.8))
+                .insert(InteractionPalette {
+                    none: Color::srgba(0.4, 0.1, 0.1, 0.8),
+                    hovered: Color::srgba(0.6, 0.15, 0.15, 0.9),
+                    pressed: Color::srgba(0.3, 0.08, 0.08, 1.0),
+                })
+                .insert(bevy::picking::hover::Hovered::default())
+                .insert(bevy::ui_widgets::Button)
+                .observe(handler);
             c.with_child(|t| {
-                t.with_text("x", Some(crate::TextStyle::size_color(10.0, Color::srgb(1.0, 0.7, 0.7))));
+                t.with_text(
+                    "x",
+                    Some(crate::TextStyle::size_color(
+                        10.0,
+                        Color::srgb(1.0, 0.7, 0.7),
+                    )),
+                );
             });
         })
     }
@@ -891,7 +927,9 @@ impl<'w, 's> UIBuilder<'w, 's> {
     }
 
     pub fn z_index(&mut self, z_index: i32) -> &mut Self {
-        self.commands.entity(self.current_entity).insert(ZIndex(z_index));
+        self.commands
+            .entity(self.current_entity)
+            .insert(ZIndex(z_index));
         self
     }
 
@@ -926,9 +964,14 @@ impl<'w, 's> UIBuilder<'w, 's> {
             EntityCursor::System(SystemCursorIcon::Pointer),
             TabIndex(0),
         );
-        self.spawn_button_inner(text, bundle, move |commands, entity| {
-            commands.entity(entity).observe(handler);
-        }, f)
+        self.spawn_button_inner(
+            text,
+            bundle,
+            move |commands, entity| {
+                commands.entity(entity).observe(handler);
+            },
+            f,
+        )
     }
 
     /// Add a themed button (with width/height from theme) as a child. Returns to the parent after the closure.
@@ -969,9 +1012,14 @@ impl<'w, 's> UIBuilder<'w, 's> {
                 font_size: btn.font_size,
             },
         );
-        self.spawn_button_inner(text, bundle, move |commands, entity| {
-            commands.entity(entity).observe(handler);
-        }, f)
+        self.spawn_button_inner(
+            text,
+            bundle,
+            move |commands, entity| {
+                commands.entity(entity).observe(handler);
+            },
+            f,
+        )
     }
 
     // ========================================================================
@@ -984,7 +1032,12 @@ impl<'w, 's> UIBuilder<'w, 's> {
         initially_collapsed: bool,
         f: F,
     ) -> &mut Self {
-        self.with_collapsible_toggle_at(label, initially_collapsed, CollapsibleTogglePosition::Top, f)
+        self.with_collapsible_toggle_at(
+            label,
+            initially_collapsed,
+            CollapsibleTogglePosition::Top,
+            f,
+        )
     }
 
     /// Same as [`with_collapsible`](Self::with_collapsible), but the toggle button
@@ -997,7 +1050,12 @@ impl<'w, 's> UIBuilder<'w, 's> {
         initially_collapsed: bool,
         f: F,
     ) -> &mut Self {
-        self.with_collapsible_toggle_at(label, initially_collapsed, CollapsibleTogglePosition::Bottom, f)
+        self.with_collapsible_toggle_at(
+            label,
+            initially_collapsed,
+            CollapsibleTogglePosition::Bottom,
+            f,
+        )
     }
 
     fn with_collapsible_toggle_at<F: FnOnce(&mut Self)>(
@@ -1031,7 +1089,10 @@ impl<'w, 's> UIBuilder<'w, 's> {
                         .bg_color(toggle_bg);
 
                     let arrow = if collapsed { "▶" } else { "▼" };
-                    btn.add_text_child(format!("{arrow} {label_owned}"), Some(crate::TextStyle::size(12.0)));
+                    btn.add_text_child(
+                        format!("{arrow} {label_owned}"),
+                        Some(crate::TextStyle::size(12.0)),
+                    );
                 });
             };
             let spawn_content = |ui: &mut Self| {
@@ -1070,8 +1131,12 @@ impl<'w, 's> UIBuilder<'w, 's> {
     }
 
     /// Insert an `ImageNode` and set an explicit pixel size on the current entity.
-    pub fn image_node_sized(&mut self, handle: Handle<Image>, width: f32, height: f32) -> &mut Self {
+    pub fn image_node_sized(
+        &mut self,
+        handle: Handle<Image>,
+        width: f32,
+        height: f32,
+    ) -> &mut Self {
         self.size_px(width, height).insert(ImageNode::new(handle))
     }
 }
-

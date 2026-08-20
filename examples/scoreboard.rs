@@ -39,15 +39,21 @@ enum Team {
 
 fn spawn_players(mut commands: Commands) {
     let data = [
-        ("Ramses",   14, 2,  5,  Team::Alpha),
-        ("Leonidas", 12, 4,  8,  Team::Alpha),
-        ("Caesar",   9,  6,  11, Team::Alpha),
-        ("Hannibal", 17, 1,  3,  Team::Bravo),
-        ("Cyrus",    7,  8,  14, Team::Bravo),
-        ("Sargon",   4,  10, 6,  Team::Bravo),
+        ("Ramses", 14, 2, 5, Team::Alpha),
+        ("Leonidas", 12, 4, 8, Team::Alpha),
+        ("Caesar", 9, 6, 11, Team::Alpha),
+        ("Hannibal", 17, 1, 3, Team::Bravo),
+        ("Cyrus", 7, 8, 14, Team::Bravo),
+        ("Sargon", 4, 10, 6, Team::Bravo),
     ];
     for (name, k, d, a, team) in data {
-        commands.spawn(PlayerStats { name: name.into(), kills: k, deaths: d, assists: a, team });
+        commands.spawn(PlayerStats {
+            name: name.into(),
+            kills: k,
+            deaths: d,
+            assists: a,
+            team,
+        });
     }
 }
 
@@ -67,7 +73,10 @@ fn setup_ui(commands: Commands, theme: Res<LavaTheme>, players: Query<&PlayerSta
         ..default()
     });
 
-    ui.add_text_child("SCOREBOARD", Some(TextStyle::size_color(40.0, Color::WHITE)));
+    ui.add_text_child(
+        "SCOREBOARD",
+        Some(TextStyle::size_color(40.0, Color::WHITE)),
+    );
 
     // Sort players by kills descending
     let mut sorted: Vec<_> = players.iter().collect();
@@ -75,7 +84,9 @@ fn setup_ui(commands: Commands, theme: Res<LavaTheme>, players: Query<&PlayerSta
 
     ui.with_child(|table| {
         table
-            .display_flex().flex_column().gap_px(4.0)
+            .display_flex()
+            .flex_column()
+            .gap_px(4.0)
             .padding_all_px(16.0)
             .bg_color(Color::srgba(0.05, 0.05, 0.12, 0.96))
             .border_all_px(2.0, Color::srgb(0.3, 0.3, 0.55))
@@ -100,7 +111,8 @@ fn setup_ui(commands: Commands, theme: Res<LavaTheme>, players: Query<&PlayerSta
             };
 
             table.with_child(|row| {
-                row.display_flex().flex_row()
+                row.display_flex()
+                    .flex_row()
                     .align_items_center()
                     .gap_px(8.0)
                     .padding_all_px(8.0)
@@ -114,10 +126,25 @@ fn setup_ui(commands: Commands, theme: Res<LavaTheme>, players: Query<&PlayerSta
                         .border_radius_all_px(6.0);
                 });
 
-                cell(row, &stats.name,          180.0, Color::WHITE);
-                cell(row, &stats.kills.to_string(),   60.0, Color::srgb(0.6, 1.0, 0.6));
-                cell(row, &stats.deaths.to_string(),  60.0, Color::srgb(1.0, 0.5, 0.5));
-                cell(row, &stats.assists.to_string(), 60.0, Color::srgb(0.6, 0.8, 1.0));
+                cell(row, &stats.name, 180.0, Color::WHITE);
+                cell(
+                    row,
+                    &stats.kills.to_string(),
+                    60.0,
+                    Color::srgb(0.6, 1.0, 0.6),
+                );
+                cell(
+                    row,
+                    &stats.deaths.to_string(),
+                    60.0,
+                    Color::srgb(1.0, 0.5, 0.5),
+                );
+                cell(
+                    row,
+                    &stats.assists.to_string(),
+                    60.0,
+                    Color::srgb(0.6, 0.8, 1.0),
+                );
 
                 // KD ratio
                 let kd = stats.kills as f32 / (stats.deaths as f32).max(1.0);
@@ -130,7 +157,8 @@ fn setup_ui(commands: Commands, theme: Res<LavaTheme>, players: Query<&PlayerSta
 }
 
 fn header_row(row: &mut UIBuilder) {
-    row.display_flex().flex_row()
+    row.display_flex()
+        .flex_row()
         .align_items_center()
         .gap_px(8.0)
         .padding_all_px(8.0)
@@ -138,18 +166,22 @@ fn header_row(row: &mut UIBuilder) {
         .border_radius_all_px(4.0);
 
     // Spacer for the dot column
-    row.with_child(|s| { s.size_px(12.0, 12.0); });
+    row.with_child(|s| {
+        s.size_px(12.0, 12.0);
+    });
 
     for (label, width) in [
-        ("Player",  180.0),
-        ("K",        60.0),
-        ("D",        60.0),
-        ("A",        60.0),
-        ("K/D",      70.0),
+        ("Player", 180.0),
+        ("K", 60.0),
+        ("D", 60.0),
+        ("A", 60.0),
+        ("K/D", 70.0),
     ] {
         row.with_child(|cell| {
-            cell.width_px(width)
-                .with_text(label, Some(TextStyle::size_color(16.0, Color::srgb(1.0, 0.9, 0.4))));
+            cell.width_px(width).with_text(
+                label,
+                Some(TextStyle::size_color(16.0, Color::srgb(1.0, 0.9, 0.4))),
+            );
         });
     }
 }

@@ -39,8 +39,15 @@ fn setup_ui(commands: Commands, theme: Res<LavaTheme>) {
 
     // ── Bundle-function approach ──────────────────────────────────────
     // `header` and `label` return `impl Bundle`; insert them on child nodes.
-    ui.with_child(|c| { c.insert_bundle(header("Lava UI Builder", &theme.text)); });
-    ui.with_child(|c| { c.insert_bundle(label("Bundle-function widgets compose with children![]", &theme.text)); });
+    ui.with_child(|c| {
+        c.insert_bundle(header("Lava UI Builder", &theme.text));
+    });
+    ui.with_child(|c| {
+        c.insert_bundle(label(
+            "Bundle-function widgets compose with children![]",
+            &theme.text,
+        ));
+    });
 
     // ── Imperative UIBuilder approach ─────────────────────────────────
     // A simple column with text nodes

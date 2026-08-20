@@ -2,7 +2,7 @@ use bevy::ecs::spawn::Spawn;
 use bevy::ecs::system::IntoObserverSystem;
 use bevy::prelude::*;
 
-use bevy::feathers::controls::{button, ButtonProps, ButtonVariant};
+use bevy::feathers::controls::{ButtonProps, ButtonVariant, button};
 use bevy::feathers::rounded_corners::RoundedCorners;
 use bevy::ui::InteractionDisabled;
 use bevy::ui_widgets::Activate;
@@ -16,93 +16,151 @@ use crate::{ButtonBuilder, UIBuilder};
 impl ButtonBuilder<'_, '_, '_> {
     pub fn text(&mut self, text: impl Into<String>) -> &mut Self {
         if let Some(text_entity) = self.text_entity {
-            self.ui.commands.entity(text_entity).insert(Text::new(text.into()));
+            self.ui
+                .commands
+                .entity(text_entity)
+                .insert(Text::new(text.into()));
         }
         self
     }
 
     pub fn font_size(&mut self, size: f32) -> &mut Self {
         if let Some(text_entity) = self.text_entity {
-            self.ui.commands.entity(text_entity).entry::<TextFont>()
-                .and_modify(move |mut tf| { tf.font_size = size; });
+            self.ui
+                .commands
+                .entity(text_entity)
+                .entry::<TextFont>()
+                .and_modify(move |mut tf| {
+                    tf.font_size = size;
+                });
         }
         self
     }
 
     pub fn text_color(&mut self, color: Color) -> &mut Self {
         if let Some(text_entity) = self.text_entity {
-            self.ui.commands.entity(text_entity).insert(TextColor(color));
+            self.ui
+                .commands
+                .entity(text_entity)
+                .insert(TextColor(color));
         }
         self
     }
 
     pub fn width_px(&mut self, width: f32) -> &mut Self {
-        self.ui.commands.entity(self.ui.current_entity).entry::<Node>()
-            .and_modify(move |mut n| { n.width = Val::Px(width); });
-        self
-    }
-    
-    pub fn width(&mut self, width: Val) -> &mut Self {
-        self.ui.commands.entity(self.ui.current_entity).entry::<Node>()
-            .and_modify(move |mut n| { n.width = width; });
-        self
-    }
-    
-    pub fn height(&mut self, height: Val) -> &mut Self {
-        self.ui.commands.entity(self.ui.current_entity).entry::<Node>()
-            .and_modify(move |mut n| { n.height = height; });
-        self
-    }
-    
-    pub fn justify_content(&mut self, justify_content: JustifyContent)-> &mut Self {
-        self.ui.commands.entity(self.ui.current_entity).entry::<Node>()
-            .and_modify(move |mut n| { n.justify_content = justify_content; });
+        self.ui
+            .commands
+            .entity(self.ui.current_entity)
+            .entry::<Node>()
+            .and_modify(move |mut n| {
+                n.width = Val::Px(width);
+            });
         self
     }
 
-    pub fn align_items(&mut self, align_items: AlignItems)-> &mut Self {
-        self.ui.commands.entity(self.ui.current_entity).entry::<Node>()
-            .and_modify(move |mut n| { n.align_items = align_items; });
+    pub fn width(&mut self, width: Val) -> &mut Self {
+        self.ui
+            .commands
+            .entity(self.ui.current_entity)
+            .entry::<Node>()
+            .and_modify(move |mut n| {
+                n.width = width;
+            });
+        self
+    }
+
+    pub fn height(&mut self, height: Val) -> &mut Self {
+        self.ui
+            .commands
+            .entity(self.ui.current_entity)
+            .entry::<Node>()
+            .and_modify(move |mut n| {
+                n.height = height;
+            });
+        self
+    }
+
+    pub fn justify_content(&mut self, justify_content: JustifyContent) -> &mut Self {
+        self.ui
+            .commands
+            .entity(self.ui.current_entity)
+            .entry::<Node>()
+            .and_modify(move |mut n| {
+                n.justify_content = justify_content;
+            });
+        self
+    }
+
+    pub fn align_items(&mut self, align_items: AlignItems) -> &mut Self {
+        self.ui
+            .commands
+            .entity(self.ui.current_entity)
+            .entry::<Node>()
+            .and_modify(move |mut n| {
+                n.align_items = align_items;
+            });
         self
     }
 
     pub fn height_px(&mut self, height: f32) -> &mut Self {
-        self.ui.commands.entity(self.ui.current_entity).entry::<Node>()
-            .and_modify(move |mut n| { n.height = Val::Px(height); });
+        self.ui
+            .commands
+            .entity(self.ui.current_entity)
+            .entry::<Node>()
+            .and_modify(move |mut n| {
+                n.height = Val::Px(height);
+            });
         self
     }
 
     pub fn size_px(&mut self, width: f32, height: f32) -> &mut Self {
         self.width_px(width).height_px(height)
     }
-    
+
     pub fn size(&mut self, width: Val, height: Val) -> &mut Self {
         self.width(width).height(height)
     }
 
     pub fn bg_color(&mut self, color: Color) -> &mut Self {
-        self.ui.commands.entity(self.ui.current_entity).insert(BackgroundColor(color));
+        self.ui
+            .commands
+            .entity(self.ui.current_entity)
+            .insert(BackgroundColor(color));
         self
     }
 
     pub fn border_radius_all_px(&mut self, radius: f32) -> &mut Self {
-        self.ui.commands.entity(self.ui.current_entity).entry::<Node>()
-            .and_modify(move |mut n| { n.border_radius = BorderRadius::all(Val::Px(radius)); });
+        self.ui
+            .commands
+            .entity(self.ui.current_entity)
+            .entry::<Node>()
+            .and_modify(move |mut n| {
+                n.border_radius = BorderRadius::all(Val::Px(radius));
+            });
         self
     }
 
     pub fn insert<T: Component>(&mut self, component: T) -> &mut Self {
-        self.ui.commands.entity(self.ui.current_entity).insert(component);
+        self.ui
+            .commands
+            .entity(self.ui.current_entity)
+            .insert(component);
         self
     }
 
     pub fn disabled(&mut self) -> &mut Self {
-        self.ui.commands.entity(self.ui.current_entity).insert(InteractionDisabled);
+        self.ui
+            .commands
+            .entity(self.ui.current_entity)
+            .insert(InteractionDisabled);
         self
     }
 
     pub fn enabled(&mut self) -> &mut Self {
-        self.ui.commands.entity(self.ui.current_entity).remove::<InteractionDisabled>();
+        self.ui
+            .commands
+            .entity(self.ui.current_entity)
+            .remove::<InteractionDisabled>();
         self
     }
 }
@@ -145,18 +203,14 @@ impl UIBuilder<'_, '_> {
         self.child();
         let button_entity = self.current_entity;
         let btn = self.theme.button.clone();
-        let button_bundle = button(
-            props,
-            overrides,
-            Spawn(Text::new(text_str)),
-        );
-        
+        let button_bundle = button(props, overrides, Spawn(Text::new(text_str)));
+
         self.commands
             .entity(button_entity)
             .insert(button_bundle)
             .observe(handler)
             .entry::<Node>()
-            .and_modify(move |mut n| { 
+            .and_modify(move |mut n| {
                 n.border_radius = btn.border_radius;
                 n.height = btn.height;
                 n.width = btn.width;
@@ -166,7 +220,8 @@ impl UIBuilder<'_, '_> {
             ui: self,
             text_entity: None,
         };
-        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| f(&mut button_builder)));
+        let result =
+            std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| f(&mut button_builder)));
 
         self.current_entity = original_entity;
         while self.parent_stack.len() > original_stack_len {
@@ -208,7 +263,13 @@ impl UIBuilder<'_, '_> {
         text: impl Into<String>,
         handler: impl IntoObserverSystem<Activate, (), M>,
     ) -> &mut Self {
-        self.feathers_button_with_overrides(text, ButtonProps::default(), InteractionDisabled, handler, |_| {})
+        self.feathers_button_with_overrides(
+            text,
+            ButtonProps::default(),
+            InteractionDisabled,
+            handler,
+            |_| {},
+        )
     }
 
     /// Add a Feathers-style button with a marker component and an observer.
@@ -243,4 +304,3 @@ impl UIBuilder<'_, '_> {
         )
     }
 }
-

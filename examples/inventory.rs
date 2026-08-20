@@ -22,13 +22,13 @@ const GAP: f32 = 6.0;
 
 // (name, count, color_rgb, col, row) — col/row are 1-based
 const ITEMS: &[(&str, u32, (f32, f32, f32), i16, i16)] = &[
-    ("Sword",  1,  (0.75, 0.20, 0.20), 1, 1),
-    ("Shield", 1,  (0.20, 0.40, 0.80), 2, 1),
-    ("Potion", 5,  (0.70, 0.20, 0.65), 3, 1),
-    ("Arrow",  32, (0.60, 0.40, 0.20), 5, 2),
-    ("Gold",   99, (0.90, 0.80, 0.10), 1, 3),
-    ("Gem",    3,  (0.30, 0.90, 0.70), 4, 3),
-    ("Torch",  8,  (1.00, 0.60, 0.10), 2, 4),
+    ("Sword", 1, (0.75, 0.20, 0.20), 1, 1),
+    ("Shield", 1, (0.20, 0.40, 0.80), 2, 1),
+    ("Potion", 5, (0.70, 0.20, 0.65), 3, 1),
+    ("Arrow", 32, (0.60, 0.40, 0.20), 5, 2),
+    ("Gold", 99, (0.90, 0.80, 0.10), 1, 3),
+    ("Gem", 3, (0.30, 0.90, 0.70), 4, 3),
+    ("Torch", 8, (1.00, 0.60, 0.10), 2, 4),
 ];
 
 fn main() {
@@ -48,10 +48,14 @@ fn setup_camera(mut commands: Commands) {
 // ── Marker components ─────────────────────────────────────────────────────────
 
 #[derive(Component)]
-struct InventoryItem { name: &'static str }
+struct InventoryItem {
+    name: &'static str,
+}
 
-#[derive(Component)] struct TooltipRoot;
-#[derive(Component)] struct TooltipText;
+#[derive(Component)]
+struct TooltipRoot;
+#[derive(Component)]
+struct TooltipText;
 
 type Item = Option<(&'static str, u32, Color)>;
 
@@ -59,24 +63,26 @@ type Item = Option<(&'static str, u32, Color)>;
 
 fn setup_ui(mut commands: Commands) {
     // Tooltip — absolute overlay, tracks cursor, hidden until hover
-    commands.spawn((
-        TooltipRoot,
-        Node {
-            position_type: PositionType::Absolute,
-            padding: UiRect::all(Val::Px(8.0)),
-            ..default()
-        },
-        BackgroundColor(Color::srgba(0.05, 0.05, 0.12, 0.92)),
-        BorderColor::all(Color::srgb(0.6, 0.6, 0.85)),
-        GlobalZIndex(200),
-        Visibility::Hidden,
-    )).with_child((
-        TooltipText,
-        Text::new(""),
-        TextFont::default().with_font_size(15.0),
-        TextColor(Color::WHITE),
-        Pickable::IGNORE,
-    ));
+    commands
+        .spawn((
+            TooltipRoot,
+            Node {
+                position_type: PositionType::Absolute,
+                padding: UiRect::all(Val::Px(8.0)),
+                ..default()
+            },
+            BackgroundColor(Color::srgba(0.05, 0.05, 0.12, 0.92)),
+            BorderColor::all(Color::srgb(0.6, 0.6, 0.85)),
+            GlobalZIndex(200),
+            Visibility::Hidden,
+        ))
+        .with_child((
+            TooltipText,
+            Text::new(""),
+            TextFont::default().with_font_size(15.0),
+            TextColor(Color::WHITE),
+            Pickable::IGNORE,
+        ));
 
     // Build item lookup: (col, row) → item data
     let mut item_map: HashMap<(i16, i16), (&'static str, u32, Color)> = HashMap::default();
@@ -94,40 +100,47 @@ fn setup_ui(mut commands: Commands) {
     }
 
     // Inventory grid container
-    let grid = commands.spawn((
-        Node {
-            display: Display::Grid,
-            column_gap: Val::Px(GAP),
-            row_gap: Val::Px(GAP),
-            padding: UiRect::all(Val::Px(12.0)),
-            ..default()
-        },
-        BackgroundColor(Color::srgba(0.08, 0.08, 0.14, 0.96)),
-        BorderColor::all(Color::srgb(0.28, 0.28, 0.52)),
-        Pickable::IGNORE,
-    )).add_children(&slot_ids).id();
+    let grid = commands
+        .spawn((
+            Node {
+                display: Display::Grid,
+                column_gap: Val::Px(GAP),
+                row_gap: Val::Px(GAP),
+                padding: UiRect::all(Val::Px(12.0)),
+                ..default()
+            },
+            BackgroundColor(Color::srgba(0.08, 0.08, 0.14, 0.96)),
+            BorderColor::all(Color::srgb(0.28, 0.28, 0.52)),
+            Pickable::IGNORE,
+        ))
+        .add_children(&slot_ids)
+        .id();
 
     // Title
-    let title = commands.spawn((
-        Text::new("Inventory"),
-        TextFont::default().with_font_size(36.0),
-        TextColor(Color::WHITE),
-    )).id();
+    let title = commands
+        .spawn((
+            Text::new("Inventory"),
+            TextFont::default().with_font_size(36.0),
+            TextColor(Color::WHITE),
+        ))
+        .id();
 
     // Full-screen root (centers everything)
-    commands.spawn((
-        Node {
-            position_type: PositionType::Absolute,
-            width: Val::Percent(100.0),
-            height: Val::Percent(100.0),
-            flex_direction: FlexDirection::Column,
-            align_items: AlignItems::Center,
-            justify_content: JustifyContent::Center,
-            row_gap: Val::Px(16.0),
-            ..default()
-        },
-        Pickable::IGNORE,
-    )).add_children(&[title, grid]);
+    commands
+        .spawn((
+            Node {
+                position_type: PositionType::Absolute,
+                width: Val::Percent(100.0),
+                height: Val::Percent(100.0),
+                flex_direction: FlexDirection::Column,
+                align_items: AlignItems::Center,
+                justify_content: JustifyContent::Center,
+                row_gap: Val::Px(16.0),
+                ..default()
+            },
+            Pickable::IGNORE,
+        ))
+        .add_children(&[title, grid]);
 }
 
 /// Spawn one inventory slot with all drag/hover observers attached.
@@ -148,10 +161,17 @@ fn spawn_slot(commands: &mut Commands, col: i16, row: i16, item: Item) -> Entity
         },
         BackgroundColor(Color::srgb(0.10, 0.10, 0.18)),
         BorderColor::all(Color::srgb(0.24, 0.24, 0.44)),
-        Outline { width: Val::Px(3.0), offset: Val::ZERO, color: Color::NONE },
+        Outline {
+            width: Val::Px(3.0),
+            offset: Val::ZERO,
+            color: Color::NONE,
+        },
         GlobalZIndex::default(),
         // should_block_lower: false lets drag events reach the slot underneath
-        Pickable { should_block_lower: false, is_hoverable: true },
+        Pickable {
+            should_block_lower: false,
+            is_hoverable: true,
+        },
     ));
 
     if let Some((name, _, _)) = item {
@@ -159,30 +179,38 @@ fn spawn_slot(commands: &mut Commands, col: i16, row: i16, item: Item) -> Entity
     }
 
     // Hover → show tooltip with item name
-    slot.observe(move |ev: On<Pointer<Over>>,
-                       items: Query<&InventoryItem>,
-                       mut vis_q: Query<&mut Visibility, With<TooltipRoot>>,
-                       mut txt_q: Query<&mut Text, With<TooltipText>>| {
-        if items.get(ev.event_target()).is_ok() {
-            if let Ok(mut v) = vis_q.single_mut() { *v = Visibility::Visible; }
-            if let Ok(mut t) = txt_q.single_mut() {
-                **t = item_name.unwrap_or("").to_string();
+    slot.observe(
+        move |ev: On<Pointer<Over>>,
+              items: Query<&InventoryItem>,
+              mut vis_q: Query<&mut Visibility, With<TooltipRoot>>,
+              mut txt_q: Query<&mut Text, With<TooltipText>>| {
+            if items.get(ev.event_target()).is_ok() {
+                if let Ok(mut v) = vis_q.single_mut() {
+                    *v = Visibility::Visible;
+                }
+                if let Ok(mut t) = txt_q.single_mut() {
+                    **t = item_name.unwrap_or("").to_string();
+                }
             }
-        }
-    });
-    slot.observe(|_: On<Pointer<Out>>,
-                  mut vis_q: Query<&mut Visibility, With<TooltipRoot>>| {
-        if let Ok(mut v) = vis_q.single_mut() { *v = Visibility::Hidden; }
-    });
+        },
+    );
+    slot.observe(
+        |_: On<Pointer<Out>>, mut vis_q: Query<&mut Visibility, With<TooltipRoot>>| {
+            if let Ok(mut v) = vis_q.single_mut() {
+                *v = Visibility::Hidden;
+            }
+        },
+    );
 
     // Drag start → white outline + elevate above other slots
-    slot.observe(|ev: On<Pointer<DragStart>>,
-                  mut q: Query<(&mut Outline, &mut GlobalZIndex)>| {
-        if let Ok((mut outline, mut zidx)) = q.get_mut(ev.event_target()) {
-            outline.color = Color::WHITE;
-            zidx.0 = 10;
-        }
-    });
+    slot.observe(
+        |ev: On<Pointer<DragStart>>, mut q: Query<(&mut Outline, &mut GlobalZIndex)>| {
+            if let Ok((mut outline, mut zidx)) = q.get_mut(ev.event_target()) {
+                outline.color = Color::WHITE;
+                zidx.0 = 10;
+            }
+        },
+    );
 
     // Drag → offset visual position by drag distance (leaves boundary freely)
     slot.observe(|ev: On<Pointer<Drag>>, mut q: Query<&mut UiTransform>| {
@@ -192,14 +220,16 @@ fn spawn_slot(commands: &mut Commands, col: i16, row: i16, item: Item) -> Entity
     });
 
     // Drag end → reset visual offset and styling
-    slot.observe(|ev: On<Pointer<DragEnd>>,
-                  mut q: Query<(&mut UiTransform, &mut Outline, &mut GlobalZIndex)>| {
-        if let Ok((mut t, mut outline, mut zidx)) = q.get_mut(ev.event_target()) {
-            t.translation = Val2::ZERO;
-            outline.color = Color::NONE;
-            zidx.0 = 0;
-        }
-    });
+    slot.observe(
+        |ev: On<Pointer<DragEnd>>,
+         mut q: Query<(&mut UiTransform, &mut Outline, &mut GlobalZIndex)>| {
+            if let Ok((mut t, mut outline, mut zidx)) = q.get_mut(ev.event_target()) {
+                t.translation = Val2::ZERO;
+                outline.color = Color::NONE;
+                zidx.0 = 0;
+            }
+        },
+    );
 
     // Drop → swap grid positions so items visually exchange slots
     slot.observe(|ev: On<Pointer<DragDrop>>, mut q: Query<&mut Node>| {
@@ -223,8 +253,13 @@ fn spawn_slot(commands: &mut Commands, col: i16, row: i16, item: Item) -> Entity
                 },
                 BackgroundColor(color),
                 Pickable::IGNORE,
-            )).with_child((
-                Text::new(if count > 1 { count.to_string() } else { String::new() }),
+            ))
+            .with_child((
+                Text::new(if count > 1 {
+                    count.to_string()
+                } else {
+                    String::new()
+                }),
                 TextFont::default().with_font_size(14.0),
                 TextColor(Color::WHITE),
                 Pickable::IGNORE,
@@ -238,12 +273,11 @@ fn spawn_slot(commands: &mut Commands, col: i16, row: i16, item: Item) -> Entity
 // ── Systems ───────────────────────────────────────────────────────────────────
 
 /// Keep the tooltip anchored to the cursor position.
-fn position_tooltip(
-    windows: Query<&Window>,
-    mut q: Query<&mut Node, With<TooltipRoot>>,
-) {
+fn position_tooltip(windows: Query<&Window>, mut q: Query<&mut Node, With<TooltipRoot>>) {
     let Ok(window) = windows.single() else { return };
-    let Some(cursor) = window.cursor_position() else { return };
+    let Some(cursor) = window.cursor_position() else {
+        return;
+    };
     if let Ok(mut node) = q.single_mut() {
         node.left = Val::Px(cursor.x + 14.0);
         node.top = Val::Px(cursor.y + 14.0);

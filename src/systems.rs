@@ -2,7 +2,10 @@ use bevy::input::mouse::{MouseScrollUnit, MouseWheel};
 use bevy::picking::hover::HoverMap;
 use bevy::prelude::*;
 
-use crate::{CollapseToggleButton, Collapsible, CollapsibleContent, InteractionPalette, LavaTheme, ProgressBar, ProgressBarFill, WorldFollower};
+use crate::{
+    CollapseToggleButton, Collapsible, CollapsibleContent, InteractionPalette, LavaTheme,
+    ProgressBar, ProgressBarFill, WorldFollower,
+};
 
 // ============================================================================
 // Scroll handling
@@ -45,12 +48,23 @@ pub fn handle_collapse_toggle(
     mut collapsible_query: Query<&mut Collapsible>,
     theme: Option<Res<LavaTheme>>,
 ) {
-    let (bg_normal, bg_hovered, bg_pressed) = theme.as_ref().map_or_else(|| {
-        let d = crate::ButtonTheme::default();
-        (d.collapsible_bg, d.collapsible_bg_hovered, d.collapsible_bg_pressed)
-    }, |t| {
-        (t.button.collapsible_bg, t.button.collapsible_bg_hovered, t.button.collapsible_bg_pressed)
-    });
+    let (bg_normal, bg_hovered, bg_pressed) = theme.as_ref().map_or_else(
+        || {
+            let d = crate::ButtonTheme::default();
+            (
+                d.collapsible_bg,
+                d.collapsible_bg_hovered,
+                d.collapsible_bg_pressed,
+            )
+        },
+        |t| {
+            (
+                t.button.collapsible_bg,
+                t.button.collapsible_bg_hovered,
+                t.button.collapsible_bg_pressed,
+            )
+        },
+    );
 
     for (interaction, toggle_btn, mut bg_color) in &mut interaction_query {
         match *interaction {
@@ -168,4 +182,3 @@ pub fn apply_interaction_palette(
         });
     }
 }
-
