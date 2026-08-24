@@ -1,13 +1,17 @@
+#![expect(
+    deprecated,
+    reason = "feathers_button_fn wraps bevy_feathers' imperative button_bundle template"
+)]
+
 use bevy::ecs::spawn::Spawn;
 use bevy::ecs::system::IntoObserverSystem;
 use bevy::prelude::*;
 
-use bevy::feathers::controls::{ButtonProps, ButtonVariant, button};
 use bevy::feathers::rounded_corners::RoundedCorners;
 use bevy::ui::InteractionDisabled;
 use bevy::ui_widgets::Activate;
 
-use crate::{ButtonBuilder, UIBuilder};
+use crate::{feathers_button_fn, ButtonBuilder, ButtonProps, ButtonVariant, UIBuilder};
 
 // ============================================================================
 // ButtonBuilder — for imperative button customization via add_themed_button()
@@ -31,7 +35,7 @@ impl ButtonBuilder<'_, '_, '_> {
                 .entity(text_entity)
                 .entry::<TextFont>()
                 .and_modify(move |mut tf| {
-                    tf.font_size = size;
+                    tf.font_size = FontSize::from(size);
                 });
         }
         self
@@ -203,7 +207,8 @@ impl UIBuilder<'_, '_> {
         self.child();
         let button_entity = self.current_entity;
         let btn = self.theme.button.clone();
-        let button_bundle = button(props, overrides, Spawn(Text::new(text_str)));
+        let button_bundle = feathers_button_fn(props, overrides, Spawn(Text::new(text_str)));
+
 
         self.commands
             .entity(button_entity)

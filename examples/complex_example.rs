@@ -34,7 +34,7 @@ pub enum Faction {
 
 impl std::fmt::Display for Faction {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:?}", self)
+        write!(f, "{self:?}")
     }
 }
 
@@ -100,8 +100,7 @@ impl PlayerActivityLog {
     pub fn get(&self, player: Entity) -> &str {
         self.activities
             .get(&player)
-            .map(|s| s.as_str())
-            .unwrap_or("Waiting...")
+            .map_or("Waiting...", std::string::String::as_str)
     }
 }
 
@@ -150,7 +149,7 @@ fn spawn_mock_players(mut commands: Commands) {
         // Give each player some mock trade cards
         for pile in 1..=5 {
             stacks.push(CardStack {
-                name: format!("Commodity {}", pile),
+                name: format!("Commodity {pile}"),
                 pile_value: pile,
                 count: pile.min(3),
                 suite_value: pile * pile * pile.min(3),
@@ -172,7 +171,7 @@ fn spawn_mock_players(mut commands: Commands) {
 
         commands.spawn((
             Player { faction, is_human },
-            Name::new(format!("{} of {:?}", ruler, faction)),
+            Name::new(format!("{ruler} of {faction:?}")),
             PlayerCards { stacks },
         ));
     }
@@ -276,7 +275,7 @@ fn setup_trade_ui(
             for (name, player, _cards) in players.iter() {
                 let color = faction_color(player.faction);
                 let display_name = if player.is_human {
-                    format!("{} (YOU)", name)
+                    format!("{name} (YOU)")
                 } else {
                     name.to_string()
                 };
@@ -303,7 +302,7 @@ fn setup_trade_ui(
                     });
 
                     row.add_text_child(
-                        format!("{}: ", display_name),
+                        format!("{display_name}: "),
                         Some(TextStyle::size_color(14.0, color)),
                     );
                     row.add_text_child(
@@ -370,7 +369,7 @@ fn build_trade_card_list(ui: &mut UIBuilder, stacks: &[CardStack]) {
         }
 
         let mut sorted = pile_stacks;
-        sorted.sort_by_key(|s| if s.is_commodity { 0 } else { 1 });
+        sorted.sort_by_key(|s| i32::from(!s.is_commodity));
 
         ui.add_row(|row| {
             row.width_percent(100.0)
@@ -379,7 +378,7 @@ fn build_trade_card_list(ui: &mut UIBuilder, stacks: &[CardStack]) {
                 .align_items_center()
                 .with_flex_shrink(0.0);
 
-            row.add_text_child(format!("{}:", pile_value), Some(TextStyle::size(20.0)));
+            row.add_text_child(format!("{pile_value}:"), Some(TextStyle::size(20.0)));
 
             for stack in &sorted {
                 build_trade_card(row, stack);

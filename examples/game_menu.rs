@@ -281,6 +281,7 @@ fn back_button(p: &mut UIBuilder) {
 
 // ── Update systems ────────────────────────────────────────────────────────────
 
+#[allow(clippy::type_complexity)]
 fn sync_panels(
     menu: Res<MenuScreen>,
     mut main_q: Query<&mut Node, (With<MainPanel>, Without<AudioPanel>, Without<GraphicsPanel>)>,

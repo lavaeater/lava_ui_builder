@@ -95,7 +95,7 @@ fn setup_ui(commands: Commands, theme: Res<LavaTheme>) {
 
     ui.add_grid(3, |grid| {
         grid.width_px(400.0);
-        grid.foreach_child(items.into_iter(), |cell, item| {
+        grid.foreach_child(items, |cell, item| {
             cell.bg_color(Color::srgba(0.3, 0.3, 0.4, 0.8))
                 .padding_all_px(8.0)
                 .border_radius_all_px(4.0)

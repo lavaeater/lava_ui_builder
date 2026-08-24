@@ -325,5 +325,5 @@ fn sync_ammo_text(state: Res<GameState>, mut texts: Query<&mut Text, With<AmmoTe
 fn game_time_str(elapsed: f32) -> String {
     let mins = (elapsed as u32) / 60;
     let secs = (elapsed as u32) % 60;
-    format!("{:02}:{:02}", mins, secs)
+    format!("{mins:02}:{secs:02}")
 }
