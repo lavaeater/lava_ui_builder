@@ -399,7 +399,12 @@ impl<'w, 's> UIBuilder<'w, 's> {
         self.modify_node(move |mut n| n.overflow = overflow)
     }
     pub fn overflow_scroll_y(&mut self) -> &mut Self {
-        self.with_overflow(Overflow::scroll_y())
+        self.with_overflow(Overflow::scroll_y());
+        self.commands
+            .entity(self.current_entity)
+            .entry::<ScrollPosition>()
+            .or_default();
+        self
     }
 
     pub fn justify_start(&mut self) -> &mut Self {
