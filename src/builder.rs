@@ -542,6 +542,7 @@ impl<'w, 's> UIBuilder<'w, 's> {
     }
 
     /// Add a simple button child with text, size, bg color, font size, border radius, and a marker component.
+    #[allow(clippy::too_many_arguments)]
     pub fn add_button<T: Component>(
         &mut self,
         text: impl Into<String>,

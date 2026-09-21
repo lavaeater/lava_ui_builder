@@ -144,6 +144,7 @@ fn setup_ui(mut commands: Commands) {
 
 /// Spawn one inventory slot with all drag/hover observers attached.
 /// Returns the slot's entity ID so it can be added to the grid.
+#[allow(clippy::too_many_lines)]
 fn spawn_slot(commands: &mut Commands, col: i16, row: i16, item: Item) -> Entity {
     let item_name = item.map(|(n, _, _)| n);
 

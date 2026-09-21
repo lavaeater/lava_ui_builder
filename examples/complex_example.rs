@@ -181,6 +181,7 @@ fn spawn_mock_players(mut commands: Commands) {
 // UI setup
 // ============================================================================
 
+#[allow(clippy::too_many_lines)]
 fn setup_trade_ui(
     commands: Commands,
     theme: Res<LavaTheme>,
@@ -250,7 +251,7 @@ fn setup_trade_ui(
                 let color = faction_color(player.faction);
                 let human_tag = if player.is_human { " (YOU)" } else { "" };
                 state.add_text_child(
-                    format!("{}. {}{}", (i as usize).saturating_add(1), name, human_tag),
+                    format!("{}. {}{}", i.saturating_add(1), name, human_tag),
                     Some(TextStyle::size_color(14.0, color)),
                 );
             }
