@@ -38,7 +38,7 @@ impl std::fmt::Display for Faction {
     }
 }
 
-fn faction_color(faction: Faction) -> Color {
+const fn faction_color(faction: Faction) -> Color {
     match faction {
         Faction::Egypt => Color::srgb(0.9, 0.8, 0.3),
         Faction::Crete => Color::srgb(0.3, 0.6, 0.9),

@@ -16,7 +16,7 @@ use std::collections::VecDeque;
 
 impl<'w, 's> UIBuilder<'w, 's> {
     /// Get a reference to the UI theme.
-    pub fn theme(&self) -> &LavaTheme {
+    pub const fn theme(&self) -> &LavaTheme {
         &self.theme
     }
 
@@ -52,7 +52,7 @@ impl<'w, 's> UIBuilder<'w, 's> {
     }
 
     /// Get the entity currently being built.
-    pub fn current_entity(&self) -> Entity {
+    pub const fn current_entity(&self) -> Entity {
         self.current_entity
     }
 

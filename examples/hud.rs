@@ -65,7 +65,7 @@ impl Default for GameState {
 fn tick_game(time: Res<Time>, mut state: ResMut<GameState>) {
     state.elapsed += time.delta_secs();
     // HP slowly drains as a demo
-    state.hp = (state.hp - time.delta_secs() * 2.0).max(0.0);
+    state.hp = f32::mul_add(time.delta_secs(), -2.0, state.hp).max(0.0);
 }
 
 // ── Scene ────────────────────────────────────────────────────────────────────

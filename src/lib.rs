@@ -165,7 +165,7 @@ impl TextStyle {
 }
 
 /// Convenience helpers matching the palette module style.
-pub fn rect_all(val: Val) -> UiRect {
+pub const fn rect_all(val: Val) -> UiRect {
     UiRect::all(val)
 }
 
@@ -322,6 +322,7 @@ where
 // ============================================================================
 
 /// Fluent UI Builder for creating Bevy UI elements imperatively.
+///
 /// Best suited for dynamic, data-driven, or runtime-rebuilt UI trees.
 /// For static menus, prefer the bundle-function widgets above with `children![]`.
 pub struct UIBuilder<'w, 's> {
