@@ -102,6 +102,7 @@ struct AmmoText;
 
 // ── HUD setup ─────────────────────────────────────────────────────────────────
 
+#[allow(clippy::too_many_lines)]
 fn setup_hud(commands: Commands, theme: Res<LavaTheme>, state: Res<GameState>) {
     let mut ui = UIBuilder::new(commands, Some(theme.clone()));
 
@@ -324,8 +325,9 @@ fn sync_ammo_text(state: Res<GameState>, mut texts: Query<&mut Text, With<AmmoTe
     }
 }
 
+#[allow(clippy::cast_possible_truncation)]
 fn game_time_str(elapsed: f32) -> String {
-    let mins = (elapsed as u32) / 60;
-    let secs = (elapsed as u32) % 60;
+    let mins = (elapsed as i32) / 60;
+    let secs = (elapsed as i32) % 60;
     format!("{mins:02}:{secs:02}")
 }
