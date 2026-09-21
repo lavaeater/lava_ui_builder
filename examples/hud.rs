@@ -72,16 +72,18 @@ fn tick_game(time: Res<Time>, mut state: ResMut<GameState>) {
 
 fn setup_scene(mut commands: Commands) {
     // Simple grid of colored quads as a fake game scene
-    for x in -4..=4_i32 {
-        for y in -3..=3_i32 {
-            let hue = (x.saturating_add(y)) as f32 * 0.08;
+    // `i8` so the grid coordinates convert to `f32` losslessly via `From`.
+    for x in -4..=4_i8 {
+        for y in -3..=3_i8 {
+            let (fx, fy) = (f32::from(x), f32::from(y));
+            let hue = (fx + fy) * 0.08;
             commands.spawn((
                 Sprite {
                     color: Color::hsl(hue * 360.0, 0.4, 0.25),
                     custom_size: Some(Vec2::splat(80.0)),
                     ..default()
                 },
-                Transform::from_xyz(x as f32 * 82.0, y as f32 * 82.0, 0.0),
+                Transform::from_xyz(fx * 82.0, fy * 82.0, 0.0),
             ));
         }
     }
