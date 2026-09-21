@@ -152,7 +152,7 @@ fn spawn_mock_players(mut commands: Commands) {
                 name: format!("Commodity {pile}"),
                 pile_value: pile,
                 count: pile.min(3),
-                suite_value: pile * pile * pile.min(3),
+                suite_value: pile.saturating_mul(pile).saturating_mul(pile.min(3)),
                 is_commodity: true,
                 is_tradeable: true,
             });
@@ -246,11 +246,11 @@ fn setup_trade_ui(
                 "Census Order:",
                 Some(TextStyle::size_color(16.0, Color::srgb(1.0, 0.8, 0.0))),
             );
-            for (i, (name, player, _cards)) in players.iter().enumerate() {
+            for (i , (name, player, _cards)) in players.iter().enumerate() {
                 let color = faction_color(player.faction);
                 let human_tag = if player.is_human { " (YOU)" } else { "" };
                 state.add_text_child(
-                    format!("{}. {}{}", i + 1, name, human_tag),
+                    format!("{}. {}{}", (i as usize).saturating_add(1), name, human_tag),
                     Some(TextStyle::size_color(14.0, color)),
                 );
             }
@@ -336,15 +336,14 @@ fn build_trade_card(ui: &mut UIBuilder, stack: &CardStack) {
             .margin_all_px(2.0)
             .bg_color(Color::srgba(0.2, 0.2, 0.3, 0.8))
             .border_radius_all_px(4.0);
-
+        
+        card.add_text_child(&stack.name, Some(TextStyle::size(medium_font)));
         if stack.is_commodity {
-            card.add_text_child(&stack.name, Some(TextStyle::size(medium_font)));
             card.add_text_child(
                 format!("x{} = {}", stack.count, stack.suite_value),
                 Some(TextStyle::size(small_font)),
             );
         } else {
-            card.add_text_child(&stack.name, Some(TextStyle::size(medium_font)));
             card.add_text_child(
                 if stack.is_tradeable {
                     "Tradeable"

@@ -158,8 +158,9 @@ fn build_main_panel(ui: &mut UIBuilder, _theme: &LavaTheme) {
                     btn.size_px(260.0, 56.0)
                         .bg_color(Color::srgb(0.5, 0.1, 0.1));
                 },
-                |_: On<Activate>| {
-                    std::process::exit(0);
+                |_: On<Activate>, mut exit: MessageWriter<AppExit>| {
+                    // Let bevy wind down cleanly instead of `process::exit`.
+                    exit.write(AppExit::Success);
                 },
             );
         });
@@ -190,7 +191,7 @@ fn build_audio_panel(ui: &mut UIBuilder, _theme: &LavaTheme) {
                         btn.size_px(40.0, 40.0);
                     },
                     |_: On<Activate>, mut s: ResMut<AudioSettings>| {
-                        s.volume = (s.volume - 1).max(0);
+                        s.volume = s.volume.saturating_sub(1);
                     },
                 );
 
@@ -206,7 +207,7 @@ fn build_audio_panel(ui: &mut UIBuilder, _theme: &LavaTheme) {
                         btn.size_px(40.0, 40.0);
                     },
                     |_: On<Activate>, mut s: ResMut<AudioSettings>| {
-                        s.volume = (s.volume + 1).min(10);
+                        s.volume = s.volume.saturating_add(1).min(10);
                     },
                 );
             });
