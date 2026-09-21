@@ -25,9 +25,9 @@ fn setup_camera(mut commands: Commands) {
 #[derive(Component)]
 struct PlayerStats {
     name: String,
-    kills: u32,
-    deaths: u32,
-    assists: u32,
+    kills: i32,
+    deaths: i32,
+    assists: i32,
     team: Team,
 }
 
@@ -79,7 +79,7 @@ fn setup_ui(commands: Commands, theme: Res<LavaTheme>, players: Query<&PlayerSta
     );
 
     // Sort players by kills descending
-    let mut sorted: Vec<_> = players.iter().collect();
+    let mut sorted: Vec<&PlayerStats> = players.iter().collect();
     sorted.sort_by_key(|p| std::cmp::Reverse(p.kills));
 
     ui.with_child(|table| {

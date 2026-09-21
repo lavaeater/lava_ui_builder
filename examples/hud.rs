@@ -74,7 +74,7 @@ fn setup_scene(mut commands: Commands) {
     // Simple grid of colored quads as a fake game scene
     for x in -4..=4_i32 {
         for y in -3..=3_i32 {
-            let hue = (x + y) as f32 * 0.08;
+            let hue = (x.saturating_add(y)) as f32 * 0.08;
             commands.spawn((
                 Sprite {
                     color: Color::hsl(hue * 360.0, 0.4, 0.25),
