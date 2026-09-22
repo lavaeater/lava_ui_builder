@@ -296,3 +296,33 @@ fn a_coloured_button_is_not_repainted_by_the_theme() {
     assert!(world.get::<lava_ui_builder::ThemedPalette>(entity).is_none());
     assert_eq!(world.get::<InteractionPalette>(entity).unwrap().none, red);
 }
+
+/// The palette reads the headless-widget state, but an entity built the legacy way --
+/// `bevy_ui::widget::Button`, which requires `Interaction` and not `Hovered` -- must keep
+/// working rather than silently going flat.
+#[test]
+fn the_palette_still_honours_the_legacy_interaction_component() {
+    let mut app = test_app();
+    app.add_systems(Update, lava_ui_builder::systems::apply_interaction_palette);
+
+    let palette = InteractionPalette {
+        none: Color::BLACK,
+        hovered: Color::WHITE,
+        pressed: Color::srgb(0.5, 0.5, 0.5),
+    };
+    let entity = app
+        .world_mut()
+        .spawn((palette.clone(), BackgroundColor(Color::NONE), Interaction::None))
+        .id();
+
+    app.update();
+    assert_eq!(app.world().get::<BackgroundColor>(entity).unwrap().0, palette.none);
+
+    *app.world_mut().get_mut::<Interaction>(entity).unwrap() = Interaction::Hovered;
+    app.update();
+    assert_eq!(
+        app.world().get::<BackgroundColor>(entity).unwrap().0,
+        palette.hovered,
+        "legacy Interaction entities must still respond"
+    );
+}

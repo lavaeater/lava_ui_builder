@@ -171,8 +171,11 @@ fn follower_axis(origin: f32, viewport_pos: f32, offset: f32, ui_scale: f32) -> 
 ///
 /// Reads [`Hovered`] (maintained by the picking backend for every entity carrying the
 /// component) and [`Pressed`] (added and removed by `bevy_ui_widgets`' button observers)
-/// rather than the legacy [`Interaction`] component: `bevy::ui_widgets::Button` does not
-/// require `Interaction`, so a palette driven by it never fired on those entities.
+/// in preference to the legacy [`Interaction`] component: `bevy::ui_widgets::Button` does
+/// not require `Interaction`, so a palette driven by it never fired on those entities.
+///
+/// [`Interaction`] is still honoured as a fallback, so a palette on an entity built with
+/// the legacy `bevy_ui::widget::Button` keeps working.
 ///
 /// The query is unfiltered on purpose. `Pressed` is a marker that is *removed* on
 /// release, and removal is invisible to `Changed`/`Added` filters, so the state is
@@ -183,13 +186,19 @@ pub fn apply_interaction_palette(
         &InteractionPalette,
         Option<&Hovered>,
         Has<Pressed>,
+        Option<&Interaction>,
         &mut BackgroundColor,
     )>,
 ) {
-    for (palette, hovered, pressed, mut bg) in &mut query {
-        let target = if pressed {
+    for (palette, hovered, pressed, interaction, mut bg) in &mut query {
+        // `Hovered`/`Pressed` when present; otherwise fall back to the legacy
+        // `Interaction`, so an entity built with `bevy_ui::widget::Button` (which requires
+        // `Interaction` but not `Hovered`) still gets its colours.
+        let target = if pressed || interaction == Some(&Interaction::Pressed) {
             palette.pressed
-        } else if hovered.is_some_and(Hovered::get) {
+        } else if hovered.is_some_and(Hovered::get)
+            || (hovered.is_none() && interaction == Some(&Interaction::Hovered))
+        {
             palette.hovered
         } else {
             palette.none
