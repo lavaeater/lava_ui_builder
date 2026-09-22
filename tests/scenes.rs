@@ -279,3 +279,20 @@ fn replace_children_swaps_the_contents_and_keeps_the_parent() {
         Some("new a")
     );
 }
+
+/// A themed widget cannot be recoloured by patching, because the token system repaints
+/// it; `button_colored` is the escape hatch, and it must not carry the token at all.
+#[test]
+fn a_coloured_button_is_not_repainted_by_the_theme() {
+    let mut app = test_app();
+    let red = Color::srgb(0.6, 0.15, 0.15);
+    let entity = spawn(
+        &mut app,
+        scenes::button_colored("Quit", red, Color::WHITE, Color::BLACK),
+    );
+    app.update();
+
+    let world = app.world();
+    assert!(world.get::<lava_ui_builder::ThemedPalette>(entity).is_none());
+    assert_eq!(world.get::<InteractionPalette>(entity).unwrap().none, red);
+}

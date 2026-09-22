@@ -118,15 +118,12 @@ pub fn label(text: impl Into<String>) -> impl Scene {
     }
 }
 
-/// A themed button with a text child.
-///
-/// The button emits [`bevy::ui_widgets::Activate`]; attach the handler at the call site
-/// with `on(..)` rather than passing it in, so the observer stays next to the button it
-/// belongs to. Note that `on(..)` requires the observer system to be `Clone`.
-///
-/// Size comes from [`BUTTON_WIDTH`]/[`BUTTON_HEIGHT`]; patch `Node` to change it.
-pub fn button(text: impl Into<String>) -> impl Scene {
-    let text = text.into();
+/// Everything a button is except its palette: layout, the headless `Button`, the border
+/// token and the caption. Split out so that [`button`] and [`button_colored`] differ by
+/// exactly one entry -- a themed widget cannot simply be patched with a colour, because
+/// `ThemedPalette` would repaint it on the next frame.
+fn button_base(content: impl Into<String>) -> impl Scene {
+    let content = content.into();
     bsn! {
         Node {
             width: {px(BUTTON_WIDTH)},
@@ -138,18 +135,49 @@ pub fn button(text: impl Into<String>) -> impl Scene {
         }
         WidgetsButton
         Hovered
+        ThemedBorderColor(ColorToken::ButtonBorder)
+        Children [(
+            Text({content})
+            ThemedFont(FontToken::Button)
+            ThemedTextColor(ColorToken::ButtonText)
+            template_value(Pickable::IGNORE)
+        )]
+    }
+}
+
+/// A themed button with a text child.
+///
+/// The button emits [`bevy::ui_widgets::Activate`]; attach the handler at the call site
+/// with `on(..)` rather than passing it in, so the observer stays next to the button it
+/// belongs to. Note that `on(..)` requires the observer system to be `Clone`.
+///
+/// Size comes from [`BUTTON_WIDTH`]/[`BUTTON_HEIGHT`]; patch `Node` to change it.
+pub fn button(content: impl Into<String>) -> impl Scene {
+    bsn! {
+        button_base(content)
         ThemedPalette {
             none: ColorToken::ButtonBg,
             hovered: ColorToken::ButtonBgHovered,
             pressed: ColorToken::ButtonBgPressed,
         }
-        ThemedBorderColor(ColorToken::ButtonBorder)
-        Children [(
-            Text({text})
-            ThemedFont(FontToken::Button)
-            ThemedTextColor(ColorToken::ButtonText)
-            template_value(Pickable::IGNORE)
-        )]
+    }
+}
+
+/// A button with explicit colors instead of theme tokens.
+///
+/// Needed because a themed widget's colors cannot be patched: `ThemedPalette` rewrites
+/// `InteractionPalette` every frame, so a patched palette would be overwritten. This is
+/// the [`text`]-to-[`label`] relationship again -- reach for it when a button's color is
+/// part of what it *means* (a red Quit, a green Confirm) rather than part of the theme.
+pub fn button_colored(
+    content: impl Into<String>,
+    none: Color,
+    hovered: Color,
+    pressed: Color,
+) -> impl Scene {
+    bsn! {
+        button_base(content)
+        template_value(InteractionPalette { none, hovered, pressed })
     }
 }
 
