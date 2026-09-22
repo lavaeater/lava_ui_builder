@@ -499,14 +499,17 @@ step: `cargo run --example <name>`.
 `font_source` bridge. Nothing was removed: the bundle functions and `UIBuilder` are
 untouched and still compile.
 
-**Verification**
+**Verification (final state)**
 
-* `tests/scenes.rs` — 6 headless tests (`MinimalPlugins` + `AssetPlugin` + `ScenePlugin`)
+* `tests/scenes.rs` — 13 headless tests (`MinimalPlugins` + `AssetPlugin` + `ScenePlugin`)
   asserting the *shape* of each spawned scene, including that `collapsible`'s `#Section`
   reference resolves to the real section entity on both children, and that a caller's
   `TextColor` patch overrides the color without disturbing the text.
-* `examples/bsn_layout.rs` — the scene port of `basic_layout`, kept alongside it for
-  comparison. Runs: window opens, no scene-resolution errors.
+  (`MinimalPlugins` + `AssetPlugin` + `ScenePlugin`) covering scene shape, `#Name`
+  resolution, token resolution, live re-theming, patching, `replace_children`, and the
+  legacy-`Interaction` fallback. Plus the 4 existing `follower_axis` unit tests.
+* All eight scene examples built and smoke-run: window up, no panics, no
+  scene-resolution errors.
 * `cargo clippy --all-targets --all-features` clean under the pedantic lint set.
 
 ### What the implementation corrected in this plan
