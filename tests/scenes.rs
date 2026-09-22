@@ -20,6 +20,7 @@ use lava_ui_builder::{
     scenes, tokens, CollapseToggleButton, Collapsible, CollapsibleContent, ColorToken,
     InteractionPalette, LavaTheme, ProgressBar, ProgressBarFill, ThemedTextColor,
 };
+use bevy::ui::ScrollPosition;
 
 /// Bevy's scene resolution needs an asset server and the scene plugin; the token system
 /// plus a `LavaTheme` are what turn the widgets' tokens into concrete colors. Nothing
@@ -193,4 +194,88 @@ fn a_collapsed_section_hides_its_content_and_shows_the_collapsed_arrow() {
     assert!(world
         .get::<Text>(toggle_text)
         .is_some_and(|t| t.0.starts_with('\u{25b6}')));
+}
+
+#[test]
+fn a_selected_list_item_uses_the_selected_palette() {
+    let mut app = test_app();
+    let unselected = spawn(&mut app, scenes::list_item("one", false));
+    let selected = spawn(&mut app, scenes::list_item("two", true));
+
+    let world = app.world();
+    let a = world.get::<InteractionPalette>(unselected).unwrap();
+    let b = world.get::<InteractionPalette>(selected).unwrap();
+    assert_ne!(
+        a.none, b.none,
+        "selection has to be visible without hovering"
+    );
+    // Not theme-driven: the token system must leave these alone.
+    assert!(world.get::<lava_ui_builder::ThemedPalette>(unselected).is_none());
+}
+
+#[test]
+fn a_scrollable_list_can_actually_scroll() {
+    let mut app = test_app();
+    let entity = spawn(&mut app, scenes::scrollable_list(2.0));
+
+    let world = app.world();
+    // `Overflow::scroll_y` alone does nothing without this component, and
+    // `handle_scroll_input` only sees entities that have it.
+    assert!(world.get::<ScrollPosition>(entity).is_some());
+    assert_eq!(
+        world.get::<Node>(entity).map(|n| n.overflow),
+        Some(Overflow::scroll_y())
+    );
+}
+
+#[test]
+fn a_bounded_scrollable_list_patches_the_cap_over_the_plain_one() {
+    let mut app = test_app();
+    let entity = spawn(&mut app, scenes::scrollable_list_bounded(2.0, 120.0));
+
+    let node = app.world().get::<Node>(entity).cloned().unwrap();
+    assert_eq!(node.max_height, Val::Px(120.0));
+    assert_eq!(node.flex_grow, 0.0, "the cap replaces the grow");
+    assert_eq!(
+        node.overflow,
+        Overflow::scroll_y(),
+        "and keeps what the composed scene set"
+    );
+}
+
+#[test]
+fn replace_children_swaps_the_contents_and_keeps_the_parent() {
+    let mut app = test_app();
+    let parent = spawn(
+        &mut app,
+        bsn! {
+            scenes::column(2.0)
+            Children [ scenes::label("old a"), scenes::label("old b") ]
+        },
+    );
+    assert_eq!(app.world().get::<Children>(parent).unwrap().len(), 2);
+
+    let mut commands = app.world_mut().commands();
+    scenes::replace_children(
+        &mut commands,
+        parent,
+        bsn_list![
+            scenes::label("new a"),
+            scenes::label("new b"),
+            scenes::label("new c"),
+        ],
+    );
+    app.update();
+
+    let world = app.world();
+    assert!(
+        world.get_entity(parent).is_ok(),
+        "the parent entity must survive a rebuild"
+    );
+    let children = world.get::<Children>(parent).unwrap();
+    assert_eq!(children.len(), 3);
+    assert_eq!(
+        world.get::<Text>(children[0]).map(|t| t.0.as_str()),
+        Some("new a")
+    );
 }

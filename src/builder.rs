@@ -136,6 +136,43 @@ impl<'w, 's> UIBuilder<'w, 's> {
         self
     }
 
+    // ========================================================================
+    // BSN interop
+    // ========================================================================
+
+    /// Apply a BSN [`Scene`] to the current entity.
+    ///
+    /// This is the bridge that lets a builder tree be migrated one subtree at a time:
+    /// keep the surrounding `UIBuilder` code and express the part you have ported as a
+    /// scene. Patches land on whatever the builder already put on the entity.
+    ///
+    /// ```ignore
+    /// ui.with_child(|c| {
+    ///     c.apply_scene(scenes::button("Play"));
+    /// });
+    /// ```
+    pub fn apply_scene(&mut self, scene: impl Scene) -> &mut Self {
+        self.commands
+            .entity(self.current_entity)
+            .queue_apply_scene(scene);
+        self
+    }
+
+    /// Spawn a BSN [`Scene`] as a child of the current entity, staying on the parent.
+    pub fn scene_child(&mut self, scene: impl Scene) -> &mut Self {
+        let child = self.commands.spawn_scene(scene).id();
+        self.commands.entity(self.current_entity).add_child(child);
+        self
+    }
+
+    /// Spawn a whole [`SceneList`] as children of the current entity.
+    pub fn scene_children(&mut self, scenes: impl SceneList) -> &mut Self {
+        self.commands
+            .entity(self.current_entity)
+            .queue_spawn_related_scenes::<Children>(scenes);
+        self
+    }
+
     /// Insert any component on the current entity.
     pub fn insert<T: Component>(&mut self, component: T) -> &mut Self {
         self.commands.entity(self.current_entity).insert(component);
