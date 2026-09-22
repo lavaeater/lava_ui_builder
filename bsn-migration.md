@@ -1,7 +1,9 @@
 # BSN migration plan for `lava_ui_builder`
 
-Status: **Phases 0-2 are implemented**; Phases 3-5 are still proposal. See §8 for what
-landed and what it corrected in this document. Written against **bevy 0.19.1**, verified
+Status: **Phases 0-5 are implemented.** The scene API is the preferred way to build UI
+in this crate, every example except `basic_layout` is on it, and `basic_layout` stays on
+the old APIs on purpose as the reference for unmigrated code. See §8 for the log and for
+what the implementation corrected in this document. Written against **bevy 0.19.1**, verified
 against the vendored sources in `~/.cargo/registry/src/*/bevy_scene-0.19.1/` and
 `bevy_feathers-0.19.1/`, plus bevy's own `examples/scene/bsn.rs` and
 `examples/ui/widgets/feathers_counter.rs`. Every BSN construct proposed below was
@@ -443,120 +445,27 @@ step: `cargo run --example <name>`.
 
 ---
 
-## 7. Open questions
+## 7. Decisions taken
 
-* **Tokens or colors in props** (Phase 2)? Tokens cost a system and a `ThemeToken`-ish type
-  but give live theme switching and match feathers. Colors are a smaller step but bake the
-  decision into every widget's props. Needs a call before Phase 4.
-* **Do we keep the bundle-function API at all?** It overlaps BSN almost exactly. Suggest
-  keeping it one release with `#[deprecated]`, since downstream (`civilization`) uses it.
-* **Does `civilization` use `UIBuilder` heavily?** That governs how long the builder has to
-  stay and whether `apply_scene` interop is enough.
-* **Feathers integration**: with `@FeathersButton` available, is our `feathers_button_*`
-  wrapper layer worth keeping, or do consumers just use feathers directly in `bsn!`?
+* **Tokens, not colors in props.** Decided in favour of tokens (§8, Phase 2). Font tokens
+  came along because colors alone still leave every text widget needing a theme argument.
+* **The bundle-function API and `UIBuilder` stay, undeprecated.** They are superseded, and
+  said so in the docs, but no `#[deprecated]` attribute was added: `civilization` consumes
+  this crate as a path dependency and lints at pedantic level, so the attribute would turn
+  a documentation change into a wall of warnings in an unrelated build. It is a one-line
+  change whenever that build is ready for it.
+* **Sizes are not tokens.** Layout is patched (`scenes::button("Play") Node { width: px(220) }`).
+  A consequence is that `LavaTheme.button.width`/`height` are unused by the scene API.
+* **List-item / icon / delete colors are consts, not tokens.** Promoting them would mean
+  new `LavaTheme` fields, which breaks any downstream construction that does not end in
+  `..Default::default()`.
 
+### Still open
 
----
-
-## Appendix A — verified probe
-
-This compiled clean against `lava_ui_builder` on bevy 0.19.1 (`cargo build --example`,
-exit 0). It is the evidence behind every syntax claim above: `FromTemplate` with an
-`Entity` field resolved from a `#Name` reference, a `SceneComponent` with a props struct,
-a runtime-built `Vec<impl Scene>` spliced into `Children`, an `Option<impl Scene>`
-conditional child, an inline `on()` observer, and theme values copied out of a
-`LavaTheme` before the macro.
-
-```rust
-use bevy::ecs::template::FromTemplate;
-use bevy::prelude::*;
-use bevy::ui_widgets::Activate;
-use lava_ui_builder::*;
-
-fn main() {
-    App::new()
-        .add_plugins(DefaultPlugins)
-        .insert_resource(LavaTheme::default())
-        .add_systems(Startup, root.spawn())
-        .run();
-}
-
-#[derive(Component, FromTemplate)]
-struct ToggleTarget { target: Entity }
-
-#[derive(SceneComponent, Default, Clone)]
-#[scene(LavaButtonProps)]
-struct LavaButton;
-
-#[derive(Default)]
-struct LavaButtonProps {
-    label: String,
-    theme: ButtonTheme,
-}
-
-impl LavaButton {
-    fn scene(props: LavaButtonProps) -> impl Scene {
-        let t = props.theme;
-        bsn! {
-            Node {
-                width: {t.width},
-                height: {t.height},
-                justify_content: JustifyContent::Center,
-                align_items: AlignItems::Center,
-                border_radius: {t.border_radius},
-            }
-            Button
-            BackgroundColor({t.bg})
-            Children [(
-                Text({props.label})
-                TextColor({t.text_color})
-            )]
-        }
-    }
-}
-
-fn root() -> impl SceneList {
-    let theme = LavaTheme::default();
-    let rows: Vec<_> = ["one", "two", "three"]
-        .into_iter()
-        .map(|label| {
-            let tc = theme.text.label_color;
-            bsn! { Text(label) TextColor(tc) }
-        })
-        .collect();
-
-    let show_footer = true;
-    let footer = show_footer.then(|| bsn! { Text("footer") });
-
-    let btn_theme = theme.button.clone();
-    bsn_list![
-        Camera2d,
-        (
-            #Root
-            Node { flex_direction: FlexDirection::Column }
-            ToggleTarget { target: #Root }
-            Children [
-                {rows},
-                {footer},
-                (
-                    @LavaButton { @label: {"Click".to_string()}, @theme: {btn_theme} }
-                    on(|_: On<Activate>| info!("clicked"))
-                ),
-            ]
-        )
-    ]
-}
-```
-
-Two errors this probe caught that are easy to hit when writing the real widgets:
-
-* `@LavaButton { label: "Click".to_string() }` → `error: expected identifier` (bare Rust
-  expression where a BSN value is expected);
-* `@LavaButton { label: {..} }` → `E0609: no field 'label' on type &mut LavaButton`
-  (props need the `@` prefix; without it the macro patches the component's own fields).
-
-
----
+* **The `feathers` Cargo feature gates nothing** (§3.3). Either wire it up or delete it --
+  both are breaking in a small way, so it wants a decision rather than a guess.
+* **How much does `civilization` use `UIBuilder`?** That governs whether the builder ever
+  gets removed, or just stops growing.
 
 ## 8. Implementation log
 
@@ -602,6 +511,10 @@ untouched and still compile.
 
 ### What the implementation corrected in this plan
 
+-1. **Braces are for component values, not function arguments.** `scenes::text(format!(..), ..)`
+   needs no braces; `Text({text})` does. The rule is that a scene-function call is ordinary
+   Rust, while a component's field or tuple value is BSN syntax.
+0. **Associated consts work bare too**, e.g. `Pickable::IGNORE` as a component entry.
 0. **Bare enum variants work as BSN values.** `ThemedPalette { none: ColorToken::ButtonBg }`
    needs no braces and no `VariantDefaults`; the special-casing in §2 applies to patching
    enum *fields*, not to passing a fieldless variant.
@@ -645,9 +558,52 @@ stick, because the token system repaints it next frame. Override the *token* ins
 (`scenes::label("x") ThemedTextColor(ColorToken::HeaderText)`), which is also what keeps
 the override following theme switches.
 
-### Next
+**Phase 3 — the rest of the widgets, and the bridge**
 
-Phase 3 (the `UIBuilder` replacement: `apply_scene` interop, `despawn_related` +
-`queue_spawn_related_scenes` rebuilds) and Phase 4 (porting the remaining seven examples).
-The scene API still lacks the widgets the richer examples need -- `list_item`,
-`icon_button`, `delete_button`, `side_panel`, `scrollable_list` -- so those come first.
+`text`, `section_label`, `row`/`column`/`panel`/`grid`/`centered`/`spacer`, `side_panel`,
+`scrollable_list(_bounded)`, `list_item`, `icon_button`, `delete_button`, and
+`button_colored`.
+
+Two kinds of widget emerged, and the split is worth keeping in mind when adding more:
+
+| Themed | Explicit |
+| --- | --- |
+| `label`, `header`, `button`, `collapsible` | `text`, `button_colored`, `list_item`, `icon_button` |
+| carries tokens, follows theme swaps | carries concrete colors |
+| **cannot** be recolored by patching | patch freely |
+
+The reason for the first row's caveat is mechanical: `apply_theme_tokens` rewrites
+`TextColor` / `InteractionPalette` every frame, so a patched color survives exactly one
+frame. `button` and `button_colored` are therefore built from a shared `button_base` and
+differ by exactly one entry.
+
+Interop, so a tree can move over a subtree at a time:
+
+* `UIBuilder::apply_scene` / `scene_child` / `scene_children`
+* `scenes::replace_children(commands, parent, list)` -- the scene answer to
+  `start_from_entity(.., clear_children: true)`. The parent entity survives, so stored
+  `Entity` ids, marker queries and `ScrollPosition` all keep working.
+
+**Phase 4 — examples**
+
+All ported: `bsn_layout` (new, the scene port of `basic_layout`), `buttons`, `scoreboard`,
+`dark_light_theme`, `game_menu`, `hud`, `inventory`, `complex_example`. `basic_layout`
+stays on the old APIs as the unmigrated reference.
+
+Three of them were carrying copies of library systems, and two of those copies were the
+`Interaction` bug from §3.1 in example form: `buttons` had its own palette system, and
+`complex_example` had its own scroll, collapse-toggle and collapsible-visibility systems.
+Both now just add `LavaUiPlugin`.
+
+`game_menu` needed a real behavioural change: its selection highlight wrote
+`BackgroundColor` directly, which the palette system now owns and would overwrite the
+next frame. It swaps the whole `InteractionPalette` instead. **Any downstream code that
+writes `BackgroundColor` on an entity that also has an `InteractionPalette` has the same
+problem** -- that is the one migration hazard for `civilization`.
+
+**Phase 5 — positioning for `.bsn` assets**
+
+Nothing to build yet; the shape is already right. Widgets are free functions with plain
+parameters, colors resolve through tokens rather than being captured, and the only asset
+handles in play (`Handle<Font>`) go through the theme rather than the scene. When a
+`.bsn` loader lands, the widgets are referenceable as-is.

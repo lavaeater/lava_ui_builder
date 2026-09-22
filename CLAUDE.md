@@ -14,10 +14,12 @@ cargo clippy --all-targets --all-features
 # Test
 cargo test
 
-# Run an example
-cargo run --example basic_layout
-cargo run --example bsn_layout      # the BSN/scene port of basic_layout
-cargo run --example complex_example
+# Run an example (all are on the scene API except basic_layout)
+cargo run --example bsn_layout          # smallest scene example; start here
+cargo run --example dark_light_theme    # live theme switching via tokens
+cargo run --example inventory           # inline on(..) observers, drag and drop
+cargo run --example complex_example     # collapsibles, scrolling, runtime rebuild
+cargo run --example basic_layout        # the OLD APIs, kept as the unmigrated reference
 ```
 
 `bacon.toml` wraps all of the above as jobs on nightly with cranelift + sccache:
@@ -31,8 +33,15 @@ still validated by running the examples.
 
 ## Architecture
 
-`lava_ui_builder` is a Bevy 0.19 UI library. It provides three APIs, and is mid-migration
-towards the third — see `bsn-migration.md` for the plan and its status.
+`lava_ui_builder` is a Bevy 0.19 UI library. It provides three APIs; the scene API is the
+one to use for new code. See `bsn-migration.md` for how they relate and what moved.
+
+**The one rule that bites:** `apply_theme_tokens` owns `TextColor` and
+`InteractionPalette` on any entity carrying a token, and rewrites them every frame. Never
+write `BackgroundColor` on an entity that has an `InteractionPalette` — swap the palette
+instead. Themed widgets (`label`, `header`, `button`, `collapsible`) cannot be recoloured
+by patching; use the explicit ones (`text`, `button_colored`, `list_item`, `icon_button`)
+when the colour is content rather than theme.
 
 ### Scene API (`src/scenes.rs`) — preferred
 Free functions (`ui_root`, `header`, `label`, `button`, `progress_bar`, `collapsible`)
