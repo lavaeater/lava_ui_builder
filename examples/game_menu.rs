@@ -1,33 +1,32 @@
-//! Game menu example for `lava_ui_builder` — Challenge 1.
+//! Game menu example for `lava_ui_builder` — Challenge 1, on the scene (BSN) API.
 //!
 //! Demonstrates sub-menu navigation driven by a `MenuScreen` resource.
 //!   Main menu → Play / Audio Settings / Graphics Settings / Quit
 //!   Audio panel → volume +/- buttons, mute toggle, Back
 //!   Graphics panel → quality selector (Low/Medium/High), Back
 //!
+//! All three panels are spawned once and shown or hidden by `Node.display`; only the
+//! text and the selection highlight are driven by systems.
+//!
 //! Run with: `cargo run --example game_menu`
 
 use bevy::prelude::*;
-use lava_ui_builder::*;
+use bevy::ui_widgets::Activate;
+use lava_ui_builder::{scenes, InteractionPalette, LavaTheme, LavaUiPlugin};
 
 fn main() {
     App::new()
-        .add_plugins(DefaultPlugins)
+        .add_plugins((DefaultPlugins, LavaUiPlugin))
         .insert_resource(LavaTheme::default())
-        .add_plugins(LavaUiPlugin)
         .init_resource::<MenuScreen>()
         .init_resource::<AudioSettings>()
         .init_resource::<GraphicsSettings>()
-        .add_systems(Startup, (setup_camera, setup_ui))
+        .add_systems(Startup, scene.spawn())
         .add_systems(
             Update,
             (sync_panels, sync_volume_text, sync_quality_buttons),
         )
         .run();
-}
-
-fn setup_camera(mut commands: Commands) {
-    commands.spawn(Camera2d);
 }
 
 // ── Resources ─────────────────────────────────────────────────────────────────
@@ -54,7 +53,7 @@ impl Default for AudioSettings {
     }
 }
 
-#[derive(Resource, Default, PartialEq, Eq, Clone, Copy, Debug)]
+#[derive(Default, PartialEq, Eq, Clone, Copy, Debug)]
 enum GraphicsQuality {
     Low,
     #[default]
@@ -68,216 +67,206 @@ struct GraphicsSettings {
 }
 
 // ── Marker components ─────────────────────────────────────────────────────────
+//
+// Components used inside `bsn!` need `Default + Clone`.
 
-#[derive(Component)]
+#[derive(Component, Default, Clone)]
 struct MainPanel;
-#[derive(Component)]
+#[derive(Component, Default, Clone)]
 struct AudioPanel;
-#[derive(Component)]
+#[derive(Component, Default, Clone)]
 struct GraphicsPanel;
-#[derive(Component)]
+#[derive(Component, Default, Clone)]
 struct VolumeText;
-#[derive(Component)]
+#[derive(Component, Default, Clone)]
 struct QualityButton(GraphicsQuality);
 
-// ── UI build ──────────────────────────────────────────────────────────────────
+// ── Palette for the quality buttons ──────────────────────────────────────────
+//
+// Selection is a *palette* swap, not a `BackgroundColor` write: the palette system owns
+// that component now, so anything writing it directly would be overwritten next frame.
 
-fn setup_ui(commands: Commands, theme: Res<LavaTheme>) {
-    let mut ui = UIBuilder::new(commands, Some(theme.clone()));
+const QUALITY_SELECTED: InteractionPalette = InteractionPalette {
+    none: Color::srgb(0.20, 0.60, 0.30),
+    hovered: Color::srgb(0.26, 0.70, 0.38),
+    pressed: Color::srgb(0.16, 0.48, 0.24),
+};
+const QUALITY_UNSELECTED: InteractionPalette = InteractionPalette {
+    none: Color::srgb(0.275, 0.400, 0.750),
+    hovered: Color::srgb(0.384, 0.600, 0.820),
+    pressed: Color::srgb(0.239, 0.286, 0.600),
+};
 
-    ui.set_node(Node {
-        position_type: PositionType::Absolute,
-        width: Val::Percent(100.0),
-        height: Val::Percent(100.0),
-        align_items: AlignItems::Center,
-        justify_content: JustifyContent::Center,
-        ..default()
-    });
+// ── UI ────────────────────────────────────────────────────────────────────────
 
-    build_main_panel(&mut ui, &theme);
-    build_audio_panel(&mut ui, &theme);
-    build_graphics_panel(&mut ui, &theme);
-
-    ui.build();
+fn scene() -> impl SceneList {
+    bsn_list![Camera2d, root()]
 }
 
-fn panel_shell(ui: &mut UIBuilder, f: impl FnOnce(&mut UIBuilder)) {
-    ui.display_flex()
-        .flex_column()
-        .align_items_center()
-        .gap_px(16.0)
-        .padding_all_px(40.0)
-        .bg_color(Color::srgba(0.08, 0.08, 0.14, 0.97))
-        .border_all_px(2.0, Color::srgb(0.25, 0.25, 0.5))
-        .border_radius_all_px(16.0)
-        .width_px(340.0);
-    f(ui);
+fn root() -> impl Scene {
+    bsn! {
+        Node {
+            position_type: PositionType::Absolute,
+            width: percent(100),
+            height: percent(100),
+            align_items: AlignItems::Center,
+            justify_content: JustifyContent::Center,
+        }
+        Children [
+            (main_panel() MainPanel),
+            (audio_panel() AudioPanel Node { display: Display::None }),
+            (graphics_panel() GraphicsPanel Node { display: Display::None }),
+        ]
+    }
 }
 
-fn build_main_panel(ui: &mut UIBuilder, _theme: &LavaTheme) {
-    ui.with_child(|panel| {
-        panel.insert(MainPanel);
-        panel_shell(panel, |p| {
-            p.add_text_child("MY GAME", Some(TextStyle::size_color(52.0, Color::WHITE)));
-            p.add_text_child(
-                "Main Menu",
-                Some(TextStyle::size_color(18.0, Color::srgb(0.7, 0.7, 0.9))),
-            );
+/// The shared panel chrome. Callers patch a marker and `display` onto it.
+fn panel_shell() -> impl Scene {
+    bsn! {
+        scenes::column(16.0)
+        Node {
+            width: {px(340.0)},
+            align_items: AlignItems::Center,
+            padding: {UiRect::all(px(40.0))},
+            border: {UiRect::all(px(2.0))},
+            border_radius: {BorderRadius::all(px(16.0))},
+        }
+        BackgroundColor(Color::srgba(0.08, 0.08, 0.14, 0.97))
+        BorderColor::all(Color::srgb(0.25, 0.25, 0.5))
+    }
+}
 
-            p.add_button_observe(
-                "  Play  ",
-                |btn| {
-                    btn.size_px(260.0, 56.0);
-                },
-                |_: On<Activate>| info!("▶ Play!"),
-            );
+/// A menu button: the standard themed button at a consistent size.
+fn menu_button(label: &str, width: f32, height: f32) -> impl Scene {
+    bsn! {
+        scenes::button(label)
+        Node { width: {px(width)}, height: {px(height)} }
+    }
+}
 
-            p.add_button_observe(
-                "  Audio  ",
-                |btn| {
-                    btn.size_px(260.0, 56.0);
-                },
-                |_: On<Activate>, mut s: ResMut<MenuScreen>| {
-                    *s = MenuScreen::Audio;
-                },
-            );
-
-            p.add_button_observe(
-                "  Graphics  ",
-                |btn| {
-                    btn.size_px(260.0, 56.0);
-                },
-                |_: On<Activate>, mut s: ResMut<MenuScreen>| {
-                    *s = MenuScreen::Graphics;
-                },
-            );
-
-            p.add_button_observe(
-                "  Quit  ",
-                |btn| {
-                    btn.size_px(260.0, 56.0)
-                        .bg_color(Color::srgb(0.5, 0.1, 0.1));
-                },
-                |_: On<Activate>, mut exit: MessageWriter<AppExit>| {
+fn main_panel() -> impl Scene {
+    bsn! {
+        panel_shell()
+        Children [
+            scenes::text("MY GAME", 52.0, Color::WHITE),
+            scenes::text("Main Menu", 18.0, Color::srgb(0.7, 0.7, 0.9)),
+            (
+                menu_button("Play", 260.0, 56.0)
+                on(|_: On<Activate>| info!("Play!"))
+            ),
+            (
+                menu_button("Audio", 260.0, 56.0)
+                on(|_: On<Activate>, mut s: ResMut<MenuScreen>| *s = MenuScreen::Audio)
+            ),
+            (
+                menu_button("Graphics", 260.0, 56.0)
+                on(|_: On<Activate>, mut s: ResMut<MenuScreen>| *s = MenuScreen::Graphics)
+            ),
+            (
+                scenes::button_colored(
+                    "Quit",
+                    Color::srgb(0.50, 0.10, 0.10),
+                    Color::srgb(0.62, 0.14, 0.14),
+                    Color::srgb(0.38, 0.08, 0.08),
+                )
+                Node { width: {px(260.0)}, height: {px(56.0)} }
+                on(|_: On<Activate>, mut exit: MessageWriter<AppExit>| {
                     // Let bevy wind down cleanly instead of `process::exit`.
                     exit.write(AppExit::Success);
-                },
-            );
-        });
-    });
+                })
+            ),
+        ]
+    }
 }
 
-fn build_audio_panel(ui: &mut UIBuilder, _theme: &LavaTheme) {
-    ui.with_child(|panel| {
-        panel.insert(AudioPanel).display_none();
-        panel_shell(panel, |p| {
-            p.add_text_child(
-                "Audio Settings",
-                Some(TextStyle::size_color(32.0, Color::WHITE)),
-            );
-
-            // Volume row: label  [ - ]  value  [ + ]
-            p.add_row(|row| {
-                row.gap_px(12.0).align_items_center();
-
-                row.add_text_child(
-                    "Volume",
-                    Some(TextStyle::size_color(20.0, Color::srgb(0.8, 0.8, 0.8))),
-                );
-
-                row.add_button_observe(
-                    " − ",
-                    |btn| {
-                        btn.size_px(40.0, 40.0);
-                    },
-                    |_: On<Activate>, mut s: ResMut<AudioSettings>| {
-                        s.volume = s.volume.saturating_sub(1);
-                    },
-                );
-
-                row.with_child(|t| {
-                    t.insert(VolumeText)
-                        .width_px(36.0)
-                        .with_text("7", Some(TextStyle::size_color(22.0, Color::WHITE)));
-                });
-
-                row.add_button_observe(
-                    " + ",
-                    |btn| {
-                        btn.size_px(40.0, 40.0);
-                    },
-                    |_: On<Activate>, mut s: ResMut<AudioSettings>| {
-                        s.volume = s.volume.saturating_add(1).min(10);
-                    },
-                );
-            });
-
-            // Mute toggle
-            p.add_button_observe(
-                "  Toggle Mute  ",
-                |btn| {
-                    btn.size_px(220.0, 48.0);
-                },
-                |_: On<Activate>, mut s: ResMut<AudioSettings>| {
+fn audio_panel() -> impl Scene {
+    bsn! {
+        panel_shell()
+        Children [
+            scenes::text("Audio Settings", 32.0, Color::WHITE),
+            (
+                scenes::row(12.0)
+                Node { align_items: AlignItems::Center }
+                Children [
+                    scenes::text("Volume", 20.0, Color::srgb(0.8, 0.8, 0.8)),
+                    (
+                        menu_button("-", 40.0, 40.0)
+                        on(|_: On<Activate>, mut s: ResMut<AudioSettings>| {
+                            s.volume = s.volume.saturating_sub(1).max(0);
+                        })
+                    ),
+                    (
+                        scenes::text("7", 22.0, Color::WHITE)
+                        Node { width: {px(36.0)} }
+                        VolumeText
+                    ),
+                    (
+                        menu_button("+", 40.0, 40.0)
+                        on(|_: On<Activate>, mut s: ResMut<AudioSettings>| {
+                            s.volume = s.volume.saturating_add(1).min(10);
+                        })
+                    ),
+                ]
+            ),
+            (
+                menu_button("Toggle Mute", 220.0, 48.0)
+                on(|_: On<Activate>, mut s: ResMut<AudioSettings>| {
                     s.muted = !s.muted;
                     info!("Muted: {}", s.muted);
-                },
-            );
-
-            back_button(p);
-        });
-    });
+                })
+            ),
+            back_button(),
+        ]
+    }
 }
 
-fn build_graphics_panel(ui: &mut UIBuilder, _theme: &LavaTheme) {
-    ui.with_child(|panel| {
-        panel.insert(GraphicsPanel).display_none();
-        panel_shell(panel, |p| {
-            p.add_text_child(
-                "Graphics Settings",
-                Some(TextStyle::size_color(32.0, Color::WHITE)),
-            );
-            p.add_text_child(
-                "Quality",
-                Some(TextStyle::size_color(18.0, Color::srgb(0.7, 0.7, 0.9))),
-            );
+fn graphics_panel() -> impl Scene {
+    let choices: Vec<_> = [
+        ("Low", GraphicsQuality::Low),
+        ("Medium", GraphicsQuality::Medium),
+        ("High", GraphicsQuality::High),
+    ]
+    .into_iter()
+    .map(|(label, quality)| {
+        bsn! {
+            scenes::button_colored(
+                label,
+                QUALITY_UNSELECTED.none,
+                QUALITY_UNSELECTED.hovered,
+                QUALITY_UNSELECTED.pressed,
+            )
+            Node { width: {px(84.0)}, height: {px(48.0)} }
+            QualityButton(quality)
+            on(move |_: On<Activate>, mut s: ResMut<GraphicsSettings>| s.quality = quality)
+        }
+    })
+    .collect();
 
-            p.add_row(|row| {
-                row.gap_px(8.0);
-
-                for (label, quality) in [
-                    ("Low", GraphicsQuality::Low),
-                    ("Medium", GraphicsQuality::Medium),
-                    ("High", GraphicsQuality::High),
-                ] {
-                    row.add_button_observe(
-                        label,
-                        move |btn| {
-                            btn.size_px(84.0, 48.0).insert(QualityButton(quality));
-                        },
-                        move |_: On<Activate>, mut s: ResMut<GraphicsSettings>| {
-                            s.quality = quality;
-                        },
-                    );
-                }
-            });
-
-            back_button(p);
-        });
-    });
+    bsn! {
+        panel_shell()
+        Children [
+            scenes::text("Graphics Settings", 32.0, Color::WHITE),
+            scenes::text("Quality", 18.0, Color::srgb(0.7, 0.7, 0.9)),
+            (
+                scenes::row(8.0)
+                Children [ {choices} ]
+            ),
+            back_button(),
+        ]
+    }
 }
 
-fn back_button(p: &mut UIBuilder) {
-    p.add_button_observe(
-        "← Back",
-        |btn| {
-            btn.size_px(140.0, 44.0)
-                .bg_color(Color::srgb(0.2, 0.2, 0.35));
-        },
-        |_: On<Activate>, mut s: ResMut<MenuScreen>| {
-            *s = MenuScreen::Main;
-        },
-    );
+fn back_button() -> impl Scene {
+    bsn! {
+        scenes::button_colored(
+            "Back",
+            Color::srgb(0.20, 0.20, 0.35),
+            Color::srgb(0.28, 0.28, 0.45),
+            Color::srgb(0.15, 0.15, 0.28),
+        )
+        Node { width: {px(140.0)}, height: {px(44.0)} }
+        on(|_: On<Activate>, mut s: ResMut<MenuScreen>| *s = MenuScreen::Main)
+    }
 }
 
 // ── Update systems ────────────────────────────────────────────────────────────
@@ -295,8 +284,8 @@ fn sync_panels(
     if !menu.is_changed() {
         return;
     }
-    let show = |display: &mut Node, visible: bool| {
-        display.display = if visible {
+    let show = |node: &mut Node, visible: bool| {
+        node.display = if visible {
             Display::Flex
         } else {
             Display::None
@@ -326,18 +315,20 @@ fn sync_volume_text(audio: Res<AudioSettings>, mut texts: Query<&mut Text, With<
     }
 }
 
+/// Selection swaps the whole palette rather than writing `BackgroundColor`: the palette
+/// system owns that component, so a direct write would last exactly one frame.
 fn sync_quality_buttons(
     gfx: Res<GraphicsSettings>,
-    mut buttons: Query<(&QualityButton, &mut BackgroundColor)>,
+    mut buttons: Query<(&QualityButton, &mut InteractionPalette)>,
 ) {
     if !gfx.is_changed() {
         return;
     }
-    for (btn, mut bg) in &mut buttons {
-        bg.0 = if btn.0 == gfx.quality {
-            Color::srgb(0.2, 0.6, 0.3)
+    for (btn, mut palette) in &mut buttons {
+        *palette = if btn.0 == gfx.quality {
+            QUALITY_SELECTED
         } else {
-            Color::srgb(0.275, 0.400, 0.750)
+            QUALITY_UNSELECTED
         };
     }
 }
