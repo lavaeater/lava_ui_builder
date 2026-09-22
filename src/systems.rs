@@ -181,6 +181,10 @@ fn follower_axis(origin: f32, viewport_pos: f32, offset: f32, ui_scale: f32) -> 
 /// release, and removal is invisible to `Changed`/`Added` filters, so the state is
 /// recomputed every frame instead. The write is guarded by an equality check, so change
 /// detection on `BackgroundColor` still only fires when the color actually moves.
+#[expect(
+    clippy::type_complexity,
+    reason = "a Bevy query tuple; splitting it into a type alias hurts more than it helps"
+)]
 pub fn apply_interaction_palette(
     mut query: Query<(
         &InteractionPalette,
