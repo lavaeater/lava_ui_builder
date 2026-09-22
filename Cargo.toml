@@ -21,8 +21,8 @@ bevy = { version = "0.19.0", default-features = false, features = ["ui", "bevy_f
 [dev-dependencies]
 bevy = { version = "0.19.0", default-features = true }
 
-[lints]
-workspace = true
+#[lints]
+#workspace = true
 
 [[example]]
 name = "basic_layout"
