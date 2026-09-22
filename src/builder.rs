@@ -554,7 +554,8 @@ impl<'w, 's> UIBuilder<'w, 's> {
         component: T,
     ) -> &mut Self {
         self.with_child(|ui| {
-            ui.insert(Button)
+            ui.insert(WidgetsButton)
+                .insert(Hovered::default())
                 .insert(component)
                 .width_px(width)
                 .height_px(height)
@@ -925,6 +926,7 @@ impl<'w, 's> UIBuilder<'w, 's> {
                 hovered: btn.bg_hovered,
                 pressed: btn.bg_pressed,
             },
+            Hovered::default(),
             WidgetsButton,
             component,
         );
@@ -1083,10 +1085,17 @@ impl<'w, 's> UIBuilder<'w, 's> {
             });
             ui.display_flex().flex_column();
 
-            let toggle_bg = ui.theme.button.collapsible_bg;
+            let toggle_palette = InteractionPalette {
+                none: ui.theme.button.collapsible_bg,
+                hovered: ui.theme.button.collapsible_bg_hovered,
+                pressed: ui.theme.button.collapsible_bg_pressed,
+            };
             let spawn_toggle = |ui: &mut Self| {
+                let toggle_bg = toggle_palette.none;
                 ui.with_child(|btn| {
-                    btn.insert(Button);
+                    btn.insert(WidgetsButton);
+                    btn.insert(Hovered::default());
+                    btn.insert(toggle_palette);
                     btn.insert(CollapseToggleButton {
                         target: collapsible_entity,
                     });

@@ -4,11 +4,20 @@ use std::collections::VecDeque;
 use bevy::color::palettes::basic::WHITE;
 use bevy::ecs::spawn::SpawnWith;
 use bevy::ecs::system::IntoObserverSystem;
+use bevy::ecs::template::FromTemplate;
+use bevy::picking::hover::Hovered;
 use bevy::prelude::*;
 
 mod builder;
 mod button_builder;
+pub mod scenes;
 pub mod systems;
+pub mod tokens;
+
+pub use tokens::{
+    ColorToken, FontToken, ThemedBackground, ThemedBorderColor, ThemedFont, ThemedPalette,
+    ThemedTextColor,
+};
 
 // Re-export feathers types for external use
 // `bevy_feathers` 0.19 renamed the imperative button template to `button_bundle` and its
@@ -115,7 +124,9 @@ impl Default for LavaTheme {
 }
 
 /// Interaction palette for hover/press color changes.
-#[derive(Component, Clone, Debug)]
+///
+/// `Default` is required so the component can be patched field-by-field in `bsn!`.
+#[derive(Component, Clone, Debug, Default)]
 pub struct InteractionPalette {
     pub none: Color,
     pub hovered: Color,
@@ -298,7 +309,12 @@ where
             parent
                 .spawn((
                     Name::new("Button Inner"),
-                    Button,
+                    // `bevy::ui_widgets::Button` (not the legacy `bevy_ui::widget::Button`):
+                    // it emits `Activate` and tracks `Hovered`/`Pressed`, which is what
+                    // `InteractionPalette` reads. The legacy button would instead bring an
+                    // `Interaction` component that nothing in this crate looks at any more.
+                    bevy::ui_widgets::Button,
+                    Hovered::default(),
                     BackgroundColor(bg),
                     palette,
                     children![(
@@ -345,7 +361,7 @@ pub struct ButtonBuilder<'a, 'w, 's> {
 
 /// Marker component for a collapsible UI section.
 /// When collapsed, the content is hidden and only the toggle button is shown.
-#[derive(Component)]
+#[derive(Component, Clone, Debug, Default)]
 pub struct Collapsible {
     pub collapsed: bool,
     pub label: String,
@@ -368,13 +384,19 @@ impl Collapsible {
 }
 
 /// Marker for the toggle button that collapses/expands a Collapsible section.
-#[derive(Component)]
+///
+/// Derives [`FromTemplate`] rather than `Default` + `Clone` because of the [`Entity`]
+/// field: that is what lets `bsn!` resolve a `#Name` reference into the real entity at
+/// spawn time (`CollapseToggleButton { target: #Section }`).
+#[derive(Component, Debug, FromTemplate)]
 pub struct CollapseToggleButton {
     pub target: Entity,
 }
 
 /// Marker for the content container inside a Collapsible section.
-#[derive(Component)]
+///
+/// See [`CollapseToggleButton`] for why this derives [`FromTemplate`].
+#[derive(Component, Debug, FromTemplate)]
 pub struct CollapsibleContent {
     pub parent: Entity,
 }
@@ -393,7 +415,7 @@ pub(crate) enum CollapsibleTogglePosition {
 
 /// Component that drives the fill percentage of a [`progress_bar`] widget.
 /// Change `value` (0.0–1.0) and the `sync_progress_bars` system will update the inner fill node.
-#[derive(Component, Clone, Debug)]
+#[derive(Component, Clone, Debug, Default)]
 pub struct ProgressBar {
     /// Fill fraction, clamped to `0.0..=1.0`.
     pub value: f32,
@@ -401,7 +423,7 @@ pub struct ProgressBar {
 }
 
 /// Marker placed on the inner fill node spawned by [`progress_bar`].
-#[derive(Component)]
+#[derive(Component, Clone, Debug, Default)]
 pub struct ProgressBarFill;
 
 // ============================================================================
@@ -410,7 +432,7 @@ pub struct ProgressBarFill;
 
 /// Attach to an absolutely-positioned UI node to make it follow `target` in screen space.
 /// `offset` is applied in pixels relative to the projected position.
-#[derive(Component, Clone, Debug)]
+#[derive(Component, Debug, FromTemplate)]
 pub struct WorldFollower {
     pub target: Entity,
     pub offset: Vec2,
@@ -515,18 +537,22 @@ pub struct LavaUiPlugin;
 
 impl Plugin for LavaUiPlugin {
     fn build(&self, app: &mut App) {
-        app.insert_resource(UiScale(1.0)).add_systems(
-            Update,
-            (
-                systems::handle_scroll_input,
-                systems::handle_collapse_toggle,
-                systems::update_collapsible_visibility,
-                systems::apply_interaction_palette,
-                systems::sync_progress_bars,
-                systems::world_follower_system,
-                adapt_ui_scale,
-            ),
-        );
+        app.insert_resource(UiScale(1.0))
+            // Collapsing is driven by the `Activate` event, so it is an observer rather
+            // than a system in the `Update` set.
+            .add_observer(systems::toggle_collapsible_on_activate)
+            .add_systems(
+                Update,
+                (
+                    // Tokens resolve before the palette turns into a BackgroundColor.
+                    (tokens::apply_theme_tokens, systems::apply_interaction_palette).chain(),
+                    systems::handle_scroll_input,
+                    systems::update_collapsible_visibility,
+                    systems::sync_progress_bars,
+                    systems::world_follower_system,
+                    adapt_ui_scale,
+                ),
+            );
     }
 }
 

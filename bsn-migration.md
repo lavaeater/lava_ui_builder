@@ -1,6 +1,7 @@
 # BSN migration plan for `lava_ui_builder`
 
-Status: proposal. Nothing here has been merged. Written against **bevy 0.19.1**, verified
+Status: **Phases 0-2 are implemented**; Phases 3-5 are still proposal. See §8 for what
+landed and what it corrected in this document. Written against **bevy 0.19.1**, verified
 against the vendored sources in `~/.cargo/registry/src/*/bevy_scene-0.19.1/` and
 `bevy_feathers-0.19.1/`, plus bevy's own `examples/scene/bsn.rs` and
 `examples/ui/widgets/feathers_counter.rs`. Every BSN construct proposed below was
@@ -61,10 +62,11 @@ Facts that matter for us:
 | **Composition** | A `Scene`-returning function call inside `bsn!` splices its entries in place: `lava_button("Play") Node { width: px(200) }` overrides just the width. Tuples of scenes are scenes. |
 | **Children** | `Children [a, b]` = two entities; `Children [a b]` = one entity with both components. Any `RelationshipTarget` works, not just `Children`. |
 | **Dynamic content** | `{expr}` interpolates a Rust expression. `Vec<S: Scene>` implements `SceneList`, so `Children [ {rows} ]` splices a runtime-built list. |
-| **Conditionals** | `Option<S>` implements `Scene` and `Option<L>` implements `SceneList` — `{cond.then(|| bsn!{ .. })}` is the idiomatic optional child. |
+| **Conditionals** | `Option<S>` implements `Scene`, and `Option<L>` implements `SceneList` **only when `L` is itself a `SceneList`**. In a `Children [ .. ]` position an interpolated value must be a *list*, so an optional child is `cond.then(\|\| bsn_list![..])`, not `cond.then(\|\| bsn!{..})`. |
 | **Observers** | `on(|ev: On<Activate>, ..| { .. })` attaches an entity observer. **The system must be `Clone`** (`OnTemplate` is `impl<I: IntoObserverSystem<..> + Clone>`, `bevy_scene-0.19.1/src/scene.rs:519`). Our current signatures take bare `impl IntoObserverSystem` — see §6. |
 | **Named entities** | `#Root` sets `Name("Root")` *and* registers the entity for reference within the same `bsn!` scope. `Component { field: #Root }` resolves to an `Entity` at spawn time, upward or downward in the tree. |
 | **Component requirements** | To appear in `bsn!` a component needs either `Default + Clone`, or `#[derive(FromTemplate)]`. `FromTemplate` is required for fields needing spawn context — `Handle<T>` (asset paths) and `Entity` (from `#Name`). Deriving both `FromTemplate` and `Default` is an error. |
+| **Asset fields are templates** | A `Handle<T>` field is patched as `HandleTemplate<T>`, whose `From<impl Into<AssetPath>>` is why bevy's example writes a *path* string. To patch one with an already-resolved handle, pass `HandleTemplate::Handle(h)`. `TextFont.font` adds a layer: it is a `FontSource`, so the patch is `FontSourceTemplate::Handle(HandleTemplate::Handle(h))` — see `scenes::font_source`. |
 | **Enums** | Need per-variant defaults; use the `VariantDefaults` pseudo-derive (implied by `FromTemplate`). |
 | **Scene components** | `#[derive(SceneComponent)] #[scene(MyProps)] struct MyWidget;` + `fn scene(props) -> impl Scene`. Consumers write `@MyWidget { @prop: value }`. A debug-build hook *errors* if the component is ever inserted without its scene. |
 | **Props vs. fields** | Inside `@MyWidget { .. }`, a plain `field: v` patches a field of the *component*; a `@name: v` entry is a **prop** passed to `MyWidget::scene`. Mixing them up is an `E0609 no field ... on type` error. |
@@ -552,3 +554,100 @@ Two errors this probe caught that are easy to hit when writing the real widgets:
   expression where a BSN value is expected);
 * `@LavaButton { label: {..} }` → `E0609: no field 'label' on type &mut LavaButton`
   (props need the `@` prefix; without it the macro patches the component's own fields).
+
+
+---
+
+## 8. Implementation log
+
+### Landed
+
+**Phase 0 — prerequisites**
+
+* **B1 fixed.** `systems::apply_interaction_palette` now reads `Hovered` + `Pressed`
+  instead of `Interaction`, so the palette works on `ui_widgets::Button` entities. The
+  query is deliberately unfiltered: `Pressed` is *removed* on release and removal is
+  invisible to `Changed`/`Added`, so the color is recomputed each frame and written only
+  when it differs, which keeps `BackgroundColor` change detection honest.
+* **B2 fixed.** Every button path is now `bevy::ui_widgets::Button` + `Hovered`:
+  `themed_button_with_node` (`lib.rs`), `add_button` and `add_themed_button`
+  (`builder.rs`, the latter had no `Hovered` at all), and the collapsible toggle.
+* **B3 fixed.** `handle_collapse_toggle` is gone. Toggling is now
+  `systems::toggle_collapsible_on_activate`, a **global observer** on `Activate`
+  registered by `LavaUiPlugin`, so it works for buttons spawned by any of the three APIs
+  and responds to ENTER/SPACE. The toggle's colors come from an `InteractionPalette`
+  like every other button, instead of being written by the toggle system.
+* **Component derives** added as planned: `Default` on `InteractionPalette`,
+  `ProgressBar`, `ProgressBarFill`, `Collapsible` (+`Clone`), and `FromTemplate` on the
+  three `Entity`-holding components (`CollapseToggleButton`, `CollapsibleContent`,
+  `WorldFollower`).
+* `"bevy_scene"` is now an explicit feature in `Cargo.toml` rather than a transitive
+  edge of `"ui"`.
+
+**Phase 1 — `src/scenes.rs`**
+
+`ui_root`, `header`, `label`, `button`, `progress_bar`, `collapsible`, plus the
+`font_source` bridge. Nothing was removed: the bundle functions and `UIBuilder` are
+untouched and still compile.
+
+**Verification**
+
+* `tests/scenes.rs` — 6 headless tests (`MinimalPlugins` + `AssetPlugin` + `ScenePlugin`)
+  asserting the *shape* of each spawned scene, including that `collapsible`'s `#Section`
+  reference resolves to the real section entity on both children, and that a caller's
+  `TextColor` patch overrides the color without disturbing the text.
+* `examples/bsn_layout.rs` — the scene port of `basic_layout`, kept alongside it for
+  comparison. Runs: window opens, no scene-resolution errors.
+* `cargo clippy --all-targets --all-features` clean under the pedantic lint set.
+
+### What the implementation corrected in this plan
+
+0. **Bare enum variants work as BSN values.** `ThemedPalette { none: ColorToken::ButtonBg }`
+   needs no braces and no `VariantDefaults`; the special-casing in §2 applies to patching
+   enum *fields*, not to passing a fieldless variant.
+1. **Props use an `@` prefix.** `@LavaButton { @caption: .. }`. A bare `field: v` inside
+   the braces patches the *component*, giving `E0609 no field ... on type &mut LavaButton`.
+2. **Optional children are `Option<impl SceneList>`**, not `Option<impl Scene>` — see the
+   table in §2.
+3. **Theme fonts need the template bridge** described in §2; a `Handle<Font>` cannot be
+   assigned to `TextFont.font` inside `bsn!`.
+4. **Values must be BSN syntax.** `Text(label.into())` does not parse; `Text({label})`
+   does. This bites most when converting existing `impl Into<String>` widget signatures.
+
+**Phase 2 — theme tokens (`src/tokens.rs`)**
+
+The open question in §7 was decided in favour of tokens. Widgets no longer take a theme
+argument at all:
+
+```rust
+scenes::button("Play")                     // was: scenes::button("Play", &theme.button)
+scenes::collapsible("Details", false, content)
+```
+
+* `ColorToken` / `FontToken` are **enums**, not feathers' string newtype. The token set is
+  exactly the fields of `LavaTheme`, so an enum makes a typo a compile error and the
+  resolver exhaustive. The trade-off is that downstream crates cannot invent tokens; if
+  that is ever wanted this becomes a newtype plus a map, as feathers does it.
+* Components: `ThemedBackground`, `ThemedTextColor`, `ThemedBorderColor`, `ThemedFont`,
+  and `ThemedPalette` (which fills an `InteractionPalette` from three tokens). Each uses
+  `#[require(..)]` so the painted component comes along automatically.
+* `apply_theme_tokens` resolves all five, ordered `.chain()`-ed *before*
+  `apply_interaction_palette`: tokens produce the palette, the palette produces the
+  `BackgroundColor` for the current hover/press state.
+* **Font tokens were not optional.** Colors alone would have left every text widget still
+  taking a theme argument just to learn its font size.
+* **Sizes deliberately stayed out.** Button width/height/border are consts in `scenes.rs`,
+  patched via `Node` at the call site. Layout is what patching is *for*, and unlike a
+  color it does not need to follow a runtime theme change.
+
+One consequence worth knowing: patching a bare `TextColor` over a themed widget does not
+stick, because the token system repaints it next frame. Override the *token* instead
+(`scenes::label("x") ThemedTextColor(ColorToken::HeaderText)`), which is also what keeps
+the override following theme switches.
+
+### Next
+
+Phase 3 (the `UIBuilder` replacement: `apply_scene` interop, `despawn_related` +
+`queue_spawn_related_scenes` rebuilds) and Phase 4 (porting the remaining seven examples).
+The scene API still lacks the widgets the richer examples need -- `list_item`,
+`icon_button`, `delete_button`, `side_panel`, `scrollable_list` -- so those come first.

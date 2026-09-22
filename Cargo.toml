@@ -16,7 +16,10 @@ feathers = []
 # dependency across the whole build). See civilization/Cargo.toml for the
 # matching expansion on the consumer side.
 [dependencies]
-bevy = { version = "0.19.0", default-features = false, features = ["ui", "bevy_feathers"] }
+# "bevy_scene" is listed explicitly even though "ui" happens to pull it in today
+# (ui -> scene -> bevy_scene): the `bsn!` macro and the whole `scenes` module live there,
+# so the dependency is real and should not rest on a transitive edge of the "ui" feature.
+bevy = { version = "0.19.0", default-features = false, features = ["ui", "bevy_feathers", "bevy_scene"] }
 
 [dev-dependencies]
 bevy = { version = "0.19.0", default-features = true }
@@ -80,6 +83,11 @@ wildcard_imports = "allow"
 [[example]]
 name = "basic_layout"
 path = "examples/basic_layout.rs"
+
+# The BSN/scene port of basic_layout. Both are kept while the migration is in flight.
+[[example]]
+name = "bsn_layout"
+path = "examples/bsn_layout.rs"
 
 [[example]]
 name = "buttons"
