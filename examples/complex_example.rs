@@ -1,21 +1,21 @@
 //! Complex UI example for `lava_ui_builder`.
 //!
-//! Demonstrates:
-//! - Collapsible sections with toggle buttons
-//! - Scrollable containers with mouse wheel support
-//! - Trade card display with grouped rows
+//! Demonstrates, on the scene (BSN) API:
+//! - `scenes::collapsible` sections with toggle buttons
+//! - `scenes::scrollable_list` with mouse wheel support
+//! - Trade card display with grouped rows, built from domain data
 //! - Game state and player activity panels
-//! - Dynamic UI rebuilding with `start_from_entity`
+//! - `scenes::replace_children` for rebuilding a list in place at runtime
+//!
+//! The previous version carried its own copies of three systems that already live in
+//! the library -- scroll handling, collapse toggling and collapsible visibility. They
+//! are now just `LavaUiPlugin`.
 //!
 //! Run with: `cargo run --example complex_example`
 
-use bevy::input::mouse::{MouseScrollUnit, MouseWheel};
-use bevy::picking::hover::HoverMap;
 use bevy::platform::collections::HashMap;
 use bevy::prelude::*;
-use lava_ui_builder::{
-    CollapseToggleButton, Collapsible, CollapsibleContent, LavaTheme, TextStyle, UIBuilder,
-};
+use lava_ui_builder::{scenes, LavaTheme, LavaUiPlugin};
 
 // ============================================================================
 // Mock domain types (stand-ins for the original game project)
@@ -72,45 +72,14 @@ pub struct PlayerCards {
 }
 
 // ============================================================================
-// UI marker components
-// ============================================================================
-
-#[derive(Component, Default)]
-pub struct TradeCardUiRoot;
-
-#[derive(Component, Default)]
-pub struct TradeCardList;
-
-#[derive(Component, Default)]
-pub struct GameStateDisplay;
-
-#[derive(Component, Default)]
-pub struct PlayerActivityListContainer;
-
-// ============================================================================
-// Resources
-// ============================================================================
-
-#[derive(Resource, Default)]
-pub struct PlayerActivityLog {
-    pub activities: HashMap<Entity, String>,
-}
-
-impl PlayerActivityLog {
-    pub fn get(&self, player: Entity) -> &str {
-        self.activities
-            .get(&player)
-            .map_or("Waiting...", std::string::String::as_str)
-    }
-}
-
-// ============================================================================
 // App entry point
 // ============================================================================
 
 fn main() {
     App::new()
-        .add_plugins(DefaultPlugins)
+        // LavaUiPlugin brings the scroll, collapse and palette systems this example
+        // used to carry its own copies of.
+        .add_plugins((DefaultPlugins, LavaUiPlugin))
         .insert_resource(LavaTheme::default())
         .init_resource::<PlayerActivityLog>()
         .add_systems(
@@ -119,11 +88,7 @@ fn main() {
         )
         .add_systems(
             Update,
-            (
-                handle_scroll_input,
-                handle_collapse_toggle,
-                update_collapsible_visibility,
-            ),
+            rebuild_activity_list.run_if(resource_changed::<PlayerActivityLog>),
         )
         .run();
 }
@@ -182,294 +147,272 @@ fn spawn_mock_players(mut commands: Commands) {
 // ============================================================================
 
 #[allow(clippy::too_many_lines)]
+// ============================================================================
+// UI marker components
+// ============================================================================
+//
+// Components used in `bsn!` need `Default + Clone`.
+
+#[derive(Component, Default, Clone)]
+pub struct TradeCardUiRoot;
+
+#[derive(Component, Default, Clone)]
+pub struct TradeCardList;
+
+#[derive(Component, Default, Clone)]
+pub struct GameStateDisplay;
+
+#[derive(Component, Default, Clone)]
+pub struct PlayerActivityListContainer;
+
+// ============================================================================
+// Resources
+// ============================================================================
+
+#[derive(Resource, Default)]
+pub struct PlayerActivityLog {
+    pub activities: HashMap<Entity, String>,
+}
+
+impl PlayerActivityLog {
+    pub fn get(&self, player: Entity) -> &str {
+        self.activities
+            .get(&player)
+            .map_or("Waiting...", std::string::String::as_str)
+    }
+}
+
+// ============================================================================
+// UI
+// ============================================================================
+
+const PANEL_BG: Color = Color::srgba(0.1, 0.1, 0.1, 0.7);
+const HEADING: Color = Color::srgb(1.0, 0.8, 0.0);
+
+/// A scene-spawning system: the whole tree is derived from world data, so it needs the
+/// queries. One `spawn_scene` replaces the old builder walk.
 fn setup_trade_ui(
-    commands: Commands,
-    theme: Res<LavaTheme>,
+    mut commands: Commands,
     players: Query<(&Name, &Player, &PlayerCards)>,
     activity_log: Res<PlayerActivityLog>,
 ) {
-    let mut ui = UIBuilder::new(commands, Some(theme.clone()));
+    let human_cards: Vec<CardStack> = players
+        .iter()
+        .find(|(_, player, _)| player.is_human)
+        .map(|(_, _, cards)| cards.stacks.clone())
+        .unwrap_or_default();
 
-    ui.component::<TradeCardUiRoot>().set_node(Node {
-        width: percent(100.0),
-        height: percent(100.0),
-        flex_direction: FlexDirection::Row,
-        padding: UiRect::all(Val::Px(8.0)),
-        column_gap: Val::Px(8.0),
-        ..default()
-    });
+    let roster: Vec<(String, Faction, bool)> = players
+        .iter()
+        .map(|(name, player, _)| (name.to_string(), player.faction, player.is_human))
+        .collect();
 
-    // ── Left side: Collapsible Trade Cards ────────────────────────────
-    ui.with_collapsible("Trade Cards", false, |cards_section| {
-        cards_section
-            .component::<TradeCardList>()
-            .width_px(340.0)
-            .height_px(500.0)
-            .bg_color(Color::srgba(0.1, 0.1, 0.1, 0.7))
-            .with_overflow(Overflow::scroll_y())
-            .insert(ScrollPosition::default())
-            .padding_all_px(4.0);
+    let activity = activity_log.get(Entity::PLACEHOLDER).to_string();
 
-        // Find the human player's cards
-        for (_name, player, cards) in players.iter() {
-            if player.is_human {
-                build_trade_card_list(cards_section, &cards.stacks);
-            }
+    commands.spawn_scene(bsn! {
+        TradeCardUiRoot
+        Node {
+            width: percent(100),
+            height: percent(100),
+            flex_direction: FlexDirection::Row,
+            padding: {UiRect::all(px(8.0))},
+            column_gap: {px(8.0)},
         }
-    });
-
-    // ── Right side: Collapsible Game Info ──────────────────────────────
-    ui.with_collapsible("Game Info", false, |info| {
-        info.width_px(500.0)
-            .bg_color(Color::srgba(0.1, 0.1, 0.1, 0.7))
-            .padding_all_px(4.0);
-
-        // Game State sub-section
-        info.add_text_child(
-            "Game State",
-            Some(TextStyle::size_color(20.0, Color::srgb(1.0, 0.8, 0.0))),
-        );
-        info.with_child(|state| {
-            state
-                .component::<GameStateDisplay>()
-                .width_percent(100.0)
-                .display_flex()
-                .flex_column()
-                .padding_all_px(4.0)
-                .margin(UiRect::bottom(Val::Px(8.0)));
-
-            state.add_text_child("State: Playing", None);
-            state.add_text_child("Activity: Trade", None);
-            state.add_text_child("Round: 3", None);
-
-            // Census order
-            state.add_text_child(
-                "Census Order:",
-                Some(TextStyle::size_color(16.0, Color::srgb(1.0, 0.8, 0.0))),
-            );
-            for (i , (name, player, _cards)) in players.iter().enumerate() {
-                let color = faction_color(player.faction);
-                let human_tag = if player.is_human { " (YOU)" } else { "" };
-                state.add_text_child(
-                    format!("{}. {}{}", i.saturating_add(1), name, human_tag),
-                    Some(TextStyle::size_color(14.0, color)),
-                );
-            }
-        });
-
-        // Player Activity sub-section
-        info.add_text_child(
-            "Player Activity",
-            Some(TextStyle::size_color(20.0, Color::srgb(1.0, 0.8, 0.0))),
-        );
-        info.with_child(|list| {
-            list.component::<PlayerActivityListContainer>()
-                .width_percent(100.0)
-                .height_px(300.0)
-                .display_flex()
-                .flex_column()
-                .padding_all_px(4.0)
-                .with_overflow(Overflow::scroll_y())
-                .insert(ScrollPosition::default());
-
-            // Populate with current activity data
-            for (name, player, _cards) in players.iter() {
-                let color = faction_color(player.faction);
-                let display_name = if player.is_human {
-                    format!("{name} (YOU)")
-                } else {
-                    name.to_string()
-                };
-
-                list.with_child(|row| {
-                    row.width_percent(100.0)
-                        .height_px(50.0)
-                        .display_flex()
-                        .flex_row()
-                        .align_items_center()
-                        .padding_all_px(4.0)
-                        .margin_all_px(2.0)
-                        .bg_color(Color::srgba(0.15, 0.15, 0.2, 0.8))
-                        .border_radius_all_px(4.0);
-
-                    // Faction color badge
-                    row.with_child(|badge| {
-                        badge
-                            .width_px(18.0)
-                            .height_px(18.0)
-                            .bg_color(color)
-                            .border_radius_all_px(9.0)
-                            .margin_all_px(4.0);
-                    });
-
-                    row.add_text_child(
-                        format!("{display_name}: "),
-                        Some(TextStyle::size_color(14.0, color)),
-                    );
-                    row.add_text_child(
-                        activity_log.get(Entity::PLACEHOLDER),
-                        Some(TextStyle::size(14.0)),
-                    );
-                });
-            }
-        });
-    });
-
-    ui.build();
-}
-
-// ============================================================================
-// Trade card rendering helpers
-// ============================================================================
-
-fn build_trade_card(ui: &mut UIBuilder, stack: &CardStack) {
-    let small_font = 12.0;
-    let medium_font = 16.0;
-
-    ui.with_child(|card| {
-        card.width_px(120.0)
-            .height_px(60.0)
-            .display_flex()
-            .flex_column()
-            .justify_center()
-            .align_items_center()
-            .padding_all_px(2.0)
-            .margin_all_px(2.0)
-            .bg_color(Color::srgba(0.2, 0.2, 0.3, 0.8))
-            .border_radius_all_px(4.0);
-        
-        card.add_text_child(&stack.name, Some(TextStyle::size(medium_font)));
-        if stack.is_commodity {
-            card.add_text_child(
-                format!("x{} = {}", stack.count, stack.suite_value),
-                Some(TextStyle::size(small_font)),
-            );
-        } else {
-            card.add_text_child(
-                if stack.is_tradeable {
-                    "Tradeable"
-                } else {
-                    "Non-Tradeable"
-                },
-                Some(TextStyle::size(small_font)),
-            );
-        }
+        Children [
+            trade_card_panel(&human_cards),
+            game_info_panel(&roster, &activity),
+        ]
     });
 }
 
-fn build_trade_card_list(ui: &mut UIBuilder, stacks: &[CardStack]) {
-    for pile_value in 1..=9 {
-        let pile_stacks: Vec<_> = stacks
-            .iter()
-            .filter(|s| s.pile_value == pile_value)
-            .collect();
-
-        if pile_stacks.is_empty() {
-            continue;
-        }
-
-        let mut sorted = pile_stacks;
-        sorted.sort_by_key(|s| i32::from(!s.is_commodity));
-
-        ui.add_row(|row| {
-            row.width_percent(100.0)
-                .height_px(70.0)
-                .justify_start()
-                .align_items_center()
-                .with_flex_shrink(0.0);
-
-            row.add_text_child(format!("{pile_value}:"), Some(TextStyle::size(20.0)));
-
-            for stack in &sorted {
-                build_trade_card(row, stack);
+/// Left side: the human player's cards, grouped by pile value, in a scrollable box.
+fn trade_card_panel(stacks: &[CardStack]) -> impl Scene {
+    let rows: Vec<_> = (1..=9)
+        .filter_map(|pile_value| {
+            let mut pile: Vec<&CardStack> =
+                stacks.iter().filter(|s| s.pile_value == pile_value).collect();
+            if pile.is_empty() {
+                return None;
             }
-        });
+            // Commodities first, then the rest.
+            pile.sort_by_key(|s| i32::from(!s.is_commodity));
+            Some(trade_card_row(pile_value, &pile))
+        })
+        .collect();
+
+    scenes::collapsible(
+        "Trade Cards",
+        false,
+        bsn_list![(
+            TradeCardList
+            scenes::scrollable_list_bounded(0.0, 500.0)
+            Node { width: {px(340.0)}, padding: {UiRect::all(px(4.0))} }
+            BackgroundColor(PANEL_BG)
+            Children [ {rows} ]
+        )],
+    )
+}
+
+fn trade_card_row(pile_value: usize, stacks: &[&CardStack]) -> impl Scene {
+    let cards: Vec<_> = stacks.iter().map(|stack| trade_card(stack)).collect();
+    bsn! {
+        scenes::row(0.0)
+        Node {
+            width: percent(100),
+            height: {px(70.0)},
+            justify_content: JustifyContent::Start,
+            align_items: AlignItems::Center,
+            flex_shrink: 0.0,
+        }
+        Children [
+            scenes::text(format!("{pile_value}:"), 20.0, Color::WHITE),
+            {cards},
+        ]
     }
 }
 
-// ============================================================================
-// Runtime systems
-// ============================================================================
-
-/// Handle mouse wheel scroll input for scrollable containers.
-fn handle_scroll_input(
-    mut mouse_wheel_events: MessageReader<MouseWheel>,
-    hover_map: Res<HoverMap>,
-    mut scroll_query: Query<&mut ScrollPosition>,
-) {
-    for mouse_wheel in mouse_wheel_events.read() {
-        let dy = match mouse_wheel.unit {
-            MouseScrollUnit::Line => mouse_wheel.y * 20.0,
-            MouseScrollUnit::Pixel => mouse_wheel.y,
-        };
-
-        for pointer_map in hover_map.values() {
-            for entity in pointer_map.keys() {
-                if let Ok(mut scroll_position) = scroll_query.get_mut(*entity) {
-                    scroll_position.y -= dy;
-                    scroll_position.y = scroll_position.y.max(0.0);
-                }
-            }
+fn trade_card(stack: &CardStack) -> impl Scene {
+    let name = stack.name.clone();
+    let subtitle = if stack.is_commodity {
+        format!("x{} = {}", stack.count, stack.suite_value)
+    } else if stack.is_tradeable {
+        "Tradeable".to_string()
+    } else {
+        "Non-Tradeable".to_string()
+    };
+    bsn! {
+        scenes::column(0.0)
+        Node {
+            width: {px(120.0)},
+            height: {px(60.0)},
+            justify_content: JustifyContent::Center,
+            align_items: AlignItems::Center,
+            padding: {UiRect::all(px(2.0))},
+            margin: {UiRect::all(px(2.0))},
+            border_radius: {BorderRadius::all(px(4.0))},
         }
+        BackgroundColor(Color::srgba(0.2, 0.2, 0.3, 0.8))
+        Children [
+            scenes::text(name, 16.0, Color::WHITE),
+            scenes::text(subtitle, 12.0, Color::srgb(0.8, 0.8, 0.8)),
+        ]
     }
 }
 
-/// Handle clicking the collapse/expand toggle button.
-fn handle_collapse_toggle(
-    mut interaction_query: Query<
-        (&Interaction, &CollapseToggleButton, &mut BackgroundColor),
-        Changed<Interaction>,
-    >,
-    mut collapsible_query: Query<&mut Collapsible>,
-) {
-    for (interaction, toggle_btn, mut bg_color) in &mut interaction_query {
-        match *interaction {
-            Interaction::Pressed => {
-                *bg_color = BackgroundColor(Color::srgb(0.4, 0.6, 0.4));
-                if let Ok(mut collapsible) = collapsible_query.get_mut(toggle_btn.target) {
-                    collapsible.collapsed = !collapsible.collapsed;
-                }
-            }
-            Interaction::Hovered => {
-                *bg_color = BackgroundColor(Color::srgb(0.35, 0.35, 0.4));
-            }
-            Interaction::None => {
-                *bg_color = BackgroundColor(Color::srgb(0.25, 0.25, 0.3));
-            }
-        }
-    }
-}
+/// Right side: static game state plus the live activity list.
+fn game_info_panel(roster: &[(String, Faction, bool)], activity: &str) -> impl Scene {
+    let census: Vec<_> = roster
+        .iter()
+        .enumerate()
+        .map(|(i, (name, faction, is_human))| {
+            let tag = if *is_human { " (YOU)" } else { "" };
+            let line = format!("{}. {name}{tag}", i.saturating_add(1));
+            scenes::text(line, 14.0, faction_color(*faction))
+        })
+        .collect();
 
-/// Update visibility of collapsible content based on collapsed state.
-fn update_collapsible_visibility(
-    collapsible_query: Query<(Entity, &Collapsible), Changed<Collapsible>>,
-    mut content_query: Query<(&CollapsibleContent, &mut Node)>,
-    mut button_text_query: Query<(&CollapseToggleButton, &Children)>,
-    mut text_query: Query<&mut Text>,
-) {
-    for (collapsible_entity, collapsible) in collapsible_query.iter() {
-        for (content, mut node) in content_query.iter_mut() {
-            if content.parent == collapsible_entity {
-                node.display = if collapsible.collapsed {
-                    Display::None
-                } else {
-                    Display::Flex
-                };
-            }
-        }
+    let activity_rows: Vec<_> = roster
+        .iter()
+        .map(|(name, faction, is_human)| {
+            activity_row(name, *faction, *is_human, activity)
+        })
+        .collect();
 
-        for (toggle_btn, children) in button_text_query.iter_mut() {
-            if toggle_btn.target == collapsible_entity {
-                for child in children.iter() {
-                    if let Ok(mut text) = text_query.get_mut(child) {
-                        **text = if collapsible.collapsed {
-                            format!("▶ {}", collapsible.label)
-                        } else {
-                            format!("▼ {}", collapsible.label)
-                        };
+    scenes::collapsible(
+        "Game Info",
+        false,
+        bsn_list![(
+            scenes::column(0.0)
+            Node { width: {px(500.0)}, padding: {UiRect::all(px(4.0))} }
+            BackgroundColor(PANEL_BG)
+            Children [
+                scenes::text("Game State", 20.0, HEADING),
+                (
+                    GameStateDisplay
+                    scenes::column(0.0)
+                    Node {
+                        width: percent(100),
+                        padding: {UiRect::all(px(4.0))},
+                        margin: {UiRect::bottom(px(8.0))},
                     }
-                }
-            }
+                    Children [
+                        scenes::label("State: Playing"),
+                        scenes::label("Activity: Trade"),
+                        scenes::label("Round: 3"),
+                        scenes::text("Census Order:", 16.0, HEADING),
+                        {census},
+                    ]
+                ),
+                scenes::text("Player Activity", 20.0, HEADING),
+                (
+                    PlayerActivityListContainer
+                    scenes::scrollable_list_bounded(0.0, 300.0)
+                    Node { padding: {UiRect::all(px(4.0))} }
+                    Children [ {activity_rows} ]
+                ),
+            ]
+        )],
+    )
+}
+
+fn activity_row(name: &str, faction: Faction, is_human: bool, activity: &str) -> impl Scene {
+    let color = faction_color(faction);
+    let display_name = if is_human {
+        format!("{name} (YOU): ")
+    } else {
+        format!("{name}: ")
+    };
+    let activity = activity.to_string();
+    bsn! {
+        scenes::row(0.0)
+        Node {
+            width: percent(100),
+            height: {px(50.0)},
+            align_items: AlignItems::Center,
+            padding: {UiRect::all(px(4.0))},
+            margin: {UiRect::all(px(2.0))},
+            border_radius: {BorderRadius::all(px(4.0))},
         }
+        BackgroundColor(Color::srgba(0.15, 0.15, 0.2, 0.8))
+        Children [
+            // Faction colour badge.
+            (
+                Node {
+                    width: {px(18.0)},
+                    height: {px(18.0)},
+                    margin: {UiRect::all(px(4.0))},
+                    border_radius: {BorderRadius::MAX},
+                }
+                BackgroundColor(color)
+            ),
+            scenes::text(display_name, 14.0, color),
+            scenes::text(activity, 14.0, Color::WHITE),
+        ]
     }
+}
+
+// ============================================================================
+// Runtime rebuild
+// ============================================================================
+
+/// Rebuild the activity list in place when the log changes.
+///
+/// `scenes::replace_children` despawns the rows and spawns fresh ones, but keeps the
+/// container entity -- so the `PlayerActivityListContainer` marker, its `ScrollPosition`
+/// and anything else holding that id all survive. This is the scene replacement for
+/// `UIBuilder::start_from_entity(.., clear_children: true)`.
+fn rebuild_activity_list(
+    mut commands: Commands,
+    log: Res<PlayerActivityLog>,
+    players: Query<(&Name, &Player)>,
+    container: Single<Entity, With<PlayerActivityListContainer>>,
+) {
+    let activity = log.get(Entity::PLACEHOLDER).to_string();
+    let rows: Vec<_> = players
+        .iter()
+        .map(|(name, player)| {
+            activity_row(name.as_str(), player.faction, player.is_human, &activity)
+        })
+        .collect();
+    scenes::replace_children(&mut commands, *container, rows);
 }
