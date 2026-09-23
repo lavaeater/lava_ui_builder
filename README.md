@@ -68,6 +68,10 @@ Start from `examples/bsn_layout.rs`. `examples/basic_layout.rs` is deliberately 
 the older bundle-function and `UIBuilder` APIs, which are still supported; see
 `bsn-migration.md` for how the three APIs relate.
 
+**Updating a project that depends on this crate?** `migration-guide.md` is the
+step-by-step version: what actually breaks (short list), what improves for free, and how
+to move a screen at a time rather than all at once.
+
 ## Issues & Simplification TODOs
 
 ### Bugs / Correctness
