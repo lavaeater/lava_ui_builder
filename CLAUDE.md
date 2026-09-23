@@ -80,9 +80,11 @@ API; still used by most examples.
   Scene widgets fill it from a `ThemedPalette` rather than setting it directly
 - `TextStyle` — optional style overrides (size, color, font, justify, line_break) passed to `with_text`; use `TextStyle::size()`, `::color()`, `::size_color()` convenience constructors
 - `Collapsible` / `CollapsibleContent` / `CollapseToggleButton` — components for collapsible sections; the toggle system lives in `systems.rs`
-- `feathers` feature: declared in `Cargo.toml` but currently gates nothing — `bevy_feathers`
-  is an unconditional dependency and `feathers_button_with_overrides()` always compiles.
-  `.text()`, `.font_size()`, `.text_color()` are no-ops on that builder.
+- feathers helpers: `bevy_feathers` is an unconditional dependency, so
+  `feathers_button_with_overrides()` and friends always compile — there is no feature to
+  enable (the no-op `feathers` feature was removed). `.text()`, `.font_size()` and
+  `.text_color()` are no-ops on that builder. In scenes, use `@FeathersButton` directly;
+  see `examples/buttons.rs`.
 - Components used inside `bsn!` need `Default + Clone`, or `#[derive(FromTemplate)]` when
   they hold an `Entity` (resolved from a `#Name`) or an asset handle
 

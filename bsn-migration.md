@@ -206,10 +206,11 @@ natural moment to make it (see Phase 2).
   dependency line plainly uses `features = ["ui", "bevy_feathers"]`. Either the comment or
   the workaround is stale, and the downstream civilization build is the one that pays.
   Relevant here because `ui` is also what currently pulls in `scene` → `bevy_scene` (§5.0).
-* `Cargo.toml` declares a `feathers` feature, but nothing in `src/` is gated on
+* `Cargo.toml` declared a `feathers` feature, but nothing in `src/` was gated on
   `feature = "feathers"` — `bevy_feathers` is an unconditional dependency and
-  `button_builder.rs`'s feathers methods always compile. The feature is a no-op, and
-  CLAUDE.md's `--features feathers` instructions are misleading.
+  `button_builder.rs`'s feathers methods always compile. **Resolved:** the feature was
+  removed rather than wired up. `--features feathers` is now an error instead of a no-op,
+  which is the point: it never did anything.
 
 ---
 
@@ -462,8 +463,6 @@ step: `cargo run --example <name>`.
 
 ### Still open
 
-* **The `feathers` Cargo feature gates nothing** (§3.3). Either wire it up or delete it --
-  both are breaking in a small way, so it wants a decision rather than a guess.
 * **How much does `civilization` use `UIBuilder`?** That governs whether the builder ever
   gets removed, or just stops growing.
 

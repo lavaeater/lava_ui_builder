@@ -5,9 +5,9 @@ edition = "2024"
 description = "A fluent UI builder for Bevy"
 license = "MIT OR Apache-2.0"
 
-[features]
-default = []
-feathers = []
+# No features. There was a `feathers` one, but it gated nothing: `bevy_feathers` is an
+# unconditional dependency and the feathers helpers always compiled. Passing
+# `--features feathers` was a no-op, so it is gone rather than wired up.
 
 # "ui" is expanded by hand (ui_api, ui_bevy_render) instead of used directly:
 # it pulls in "default_platform", which hardcodes "android-game-activity" --
