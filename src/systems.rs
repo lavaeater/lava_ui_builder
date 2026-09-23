@@ -1,10 +1,12 @@
 use bevy::input::mouse::{MouseScrollUnit, MouseWheel};
-use bevy::picking::hover::HoverMap;
+use bevy::picking::hover::{HoverMap, Hovered};
 use bevy::prelude::*;
+use bevy::ui::Pressed;
+use bevy::ui_widgets::Activate;
 
 use crate::{
-    CollapseToggleButton, Collapsible, CollapsibleContent, InteractionPalette, LavaTheme,
-    ProgressBar, ProgressBarFill, WorldFollower,
+    CollapseToggleButton, Collapsible, CollapsibleContent, InteractionPalette, ProgressBar,
+    ProgressBarFill, WorldFollower,
 };
 
 // ============================================================================
@@ -39,48 +41,25 @@ pub fn handle_scroll_input(
 // Collapsible toggle & visibility
 // ============================================================================
 
-/// Handle clicking the collapse/expand toggle button.
-pub fn handle_collapse_toggle(
-    mut interaction_query: Query<
-        (&Interaction, &CollapseToggleButton, &mut BackgroundColor),
-        Changed<Interaction>,
-    >,
-    mut collapsible_query: Query<&mut Collapsible>,
-    theme: Option<Res<LavaTheme>>,
+/// Flip a [`Collapsible`]'s state when its [`CollapseToggleButton`] is activated.
+///
+/// Registered as a global observer rather than a per-entity one so that toggle buttons
+/// spawned by any route -- builder, bundle function or scene -- are handled without
+/// having to remember to attach anything. `Activate` is emitted by
+/// [`bevy::ui_widgets::Button`] on release and on ENTER/SPACE when focused, so the
+/// toggle works with the keyboard for free.
+///
+/// The button's own colors are handled by [`InteractionPalette`], not here.
+pub fn toggle_collapsible_on_activate(
+    activate: On<Activate>,
+    toggles: Query<&CollapseToggleButton>,
+    mut collapsibles: Query<&mut Collapsible>,
 ) {
-    let (bg_normal, bg_hovered, bg_pressed) = theme.as_ref().map_or_else(
-        || {
-            let d = crate::ButtonTheme::default();
-            (
-                d.collapsible_bg,
-                d.collapsible_bg_hovered,
-                d.collapsible_bg_pressed,
-            )
-        },
-        |t| {
-            (
-                t.button.collapsible_bg,
-                t.button.collapsible_bg_hovered,
-                t.button.collapsible_bg_pressed,
-            )
-        },
-    );
-
-    for (interaction, toggle_btn, mut bg_color) in &mut interaction_query {
-        match *interaction {
-            Interaction::Pressed => {
-                *bg_color = BackgroundColor(bg_pressed);
-                if let Ok(mut collapsible) = collapsible_query.get_mut(toggle_btn.target) {
-                    collapsible.collapsed = !collapsible.collapsed;
-                }
-            }
-            Interaction::Hovered => {
-                *bg_color = BackgroundColor(bg_hovered);
-            }
-            Interaction::None => {
-                *bg_color = BackgroundColor(bg_normal);
-            }
-        }
+    let Ok(toggle) = toggles.get(activate.entity) else {
+        return;
+    };
+    if let Ok(mut collapsible) = collapsibles.get_mut(toggle.target) {
+        collapsible.collapsed = !collapsible.collapsed;
     }
 }
 
@@ -188,19 +167,49 @@ fn follower_axis(origin: f32, viewport_pos: f32, offset: f32, ui_scale: f32) -> 
     ((origin + viewport_pos) / scale + offset).round()
 }
 
-/// Apply `InteractionPalette` colors based on `Interaction` state changes.
+/// Apply [`InteractionPalette`] colors from the headless-widget interaction state.
+///
+/// Reads [`Hovered`] (maintained by the picking backend for every entity carrying the
+/// component) and [`Pressed`] (added and removed by `bevy_ui_widgets`' button observers)
+/// in preference to the legacy [`Interaction`] component: `bevy::ui_widgets::Button` does
+/// not require `Interaction`, so a palette driven by it never fired on those entities.
+///
+/// [`Interaction`] is still honoured as a fallback, so a palette on an entity built with
+/// the legacy `bevy_ui::widget::Button` keeps working.
+///
+/// The query is unfiltered on purpose. `Pressed` is a marker that is *removed* on
+/// release, and removal is invisible to `Changed`/`Added` filters, so the state is
+/// recomputed every frame instead. The write is guarded by an equality check, so change
+/// detection on `BackgroundColor` still only fires when the color actually moves.
+#[expect(
+    clippy::type_complexity,
+    reason = "a Bevy query tuple; splitting it into a type alias hurts more than it helps"
+)]
 pub fn apply_interaction_palette(
-    mut query: Query<
-        (&Interaction, &InteractionPalette, &mut BackgroundColor),
-        Changed<Interaction>,
-    >,
+    mut query: Query<(
+        &InteractionPalette,
+        Option<&Hovered>,
+        Has<Pressed>,
+        Option<&Interaction>,
+        &mut BackgroundColor,
+    )>,
 ) {
-    for (interaction, palette, mut bg) in &mut query {
-        *bg = BackgroundColor(match *interaction {
-            Interaction::Pressed => palette.pressed,
-            Interaction::Hovered => palette.hovered,
-            Interaction::None => palette.none,
-        });
+    for (palette, hovered, pressed, interaction, mut bg) in &mut query {
+        // `Hovered`/`Pressed` when present; otherwise fall back to the legacy
+        // `Interaction`, so an entity built with `bevy_ui::widget::Button` (which requires
+        // `Interaction` but not `Hovered`) still gets its colours.
+        let target = if pressed || interaction == Some(&Interaction::Pressed) {
+            palette.pressed
+        } else if hovered.is_some_and(Hovered::get)
+            || (hovered.is_none() && interaction == Some(&Interaction::Hovered))
+        {
+            palette.hovered
+        } else {
+            palette.none
+        };
+        if bg.0 != target {
+            bg.0 = target;
+        }
     }
 }
 

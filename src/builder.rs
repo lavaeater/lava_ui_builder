@@ -136,6 +136,43 @@ impl<'w, 's> UIBuilder<'w, 's> {
         self
     }
 
+    // ========================================================================
+    // BSN interop
+    // ========================================================================
+
+    /// Apply a BSN [`Scene`] to the current entity.
+    ///
+    /// This is the bridge that lets a builder tree be migrated one subtree at a time:
+    /// keep the surrounding `UIBuilder` code and express the part you have ported as a
+    /// scene. Patches land on whatever the builder already put on the entity.
+    ///
+    /// ```ignore
+    /// ui.with_child(|c| {
+    ///     c.apply_scene(scenes::button("Play"));
+    /// });
+    /// ```
+    pub fn apply_scene(&mut self, scene: impl Scene) -> &mut Self {
+        self.commands
+            .entity(self.current_entity)
+            .queue_apply_scene(scene);
+        self
+    }
+
+    /// Spawn a BSN [`Scene`] as a child of the current entity, staying on the parent.
+    pub fn scene_child(&mut self, scene: impl Scene) -> &mut Self {
+        let child = self.commands.spawn_scene(scene).id();
+        self.commands.entity(self.current_entity).add_child(child);
+        self
+    }
+
+    /// Spawn a whole [`SceneList`] as children of the current entity.
+    pub fn scene_children(&mut self, scenes: impl SceneList) -> &mut Self {
+        self.commands
+            .entity(self.current_entity)
+            .queue_spawn_related_scenes::<Children>(scenes);
+        self
+    }
+
     /// Insert any component on the current entity.
     pub fn insert<T: Component>(&mut self, component: T) -> &mut Self {
         self.commands.entity(self.current_entity).insert(component);
@@ -554,7 +591,8 @@ impl<'w, 's> UIBuilder<'w, 's> {
         component: T,
     ) -> &mut Self {
         self.with_child(|ui| {
-            ui.insert(Button)
+            ui.insert(WidgetsButton)
+                .insert(Hovered::default())
                 .insert(component)
                 .width_px(width)
                 .height_px(height)
@@ -925,6 +963,7 @@ impl<'w, 's> UIBuilder<'w, 's> {
                 hovered: btn.bg_hovered,
                 pressed: btn.bg_pressed,
             },
+            Hovered::default(),
             WidgetsButton,
             component,
         );
@@ -1083,10 +1122,17 @@ impl<'w, 's> UIBuilder<'w, 's> {
             });
             ui.display_flex().flex_column();
 
-            let toggle_bg = ui.theme.button.collapsible_bg;
+            let toggle_palette = InteractionPalette {
+                none: ui.theme.button.collapsible_bg,
+                hovered: ui.theme.button.collapsible_bg_hovered,
+                pressed: ui.theme.button.collapsible_bg_pressed,
+            };
             let spawn_toggle = |ui: &mut Self| {
+                let toggle_bg = toggle_palette.none;
                 ui.with_child(|btn| {
-                    btn.insert(Button);
+                    btn.insert(WidgetsButton);
+                    btn.insert(Hovered::default());
+                    btn.insert(toggle_palette);
                     btn.insert(CollapseToggleButton {
                         target: collapsible_entity,
                     });

@@ -1,29 +1,37 @@
-//! Dark/Light Theme example for `lava_ui_builder` — Challenge 9.
+//! Dark/Light Theme example for `lava_ui_builder` — Challenge 9, on the scene (BSN) API.
 //!
-//! Demonstrates the `LavaTheme` system: a single toggle button swaps between
-//! a dark and a light preset, rebuilding the UI via `start_from_entity`.
+//! This is the example theme tokens exist for. The previous version rebuilt the entire
+//! UI on every switch (`start_from_entity(.., clear_children: true)` plus a full
+//! repopulate). Here the tree is spawned exactly once at startup: switching themes writes
+//! the `LavaTheme` resource and `tokens::apply_theme_tokens` repaints the live entities.
+//!
+//! Nothing is despawned, so entity ids, observers and any state held on those entities
+//! all survive the switch — watch the click counter keep counting across it.
 //!
 //! Run with: `cargo run --example dark_light_theme`
 
 use bevy::prelude::*;
-use lava_ui_builder::*;
+use bevy::ui_widgets::Activate;
+use lava_ui_builder::{
+    scenes, ButtonTheme, ColorToken, FontToken, LavaTheme, LavaUiPlugin, TextTheme,
+    ThemedBackground, ThemedBorderColor, ThemedFont,
+};
 
 fn main() {
     App::new()
-        .add_plugins(DefaultPlugins)
+        .add_plugins((DefaultPlugins, LavaUiPlugin))
         .insert_resource(dark_theme())
-        .add_plugins(LavaUiPlugin)
         .init_resource::<ThemeMode>()
-        .add_systems(Startup, (setup_camera, setup_ui))
+        .init_resource::<Clicks>()
+        .add_systems(Startup, scene.spawn())
         .add_systems(
             Update,
-            on_theme_changed.run_if(resource_changed::<ThemeMode>),
+            (
+                apply_theme_mode.run_if(resource_changed::<ThemeMode>),
+                update_labels,
+            ),
         )
         .run();
-}
-
-fn setup_camera(mut commands: Commands) {
-    commands.spawn(Camera2d);
 }
 
 // ── Theme presets ─────────────────────────────────────────────────────────────
@@ -34,6 +42,9 @@ enum ThemeMode {
     Dark,
     Light,
 }
+
+#[derive(Resource, Default)]
+struct Clicks(u32);
 
 fn dark_theme() -> LavaTheme {
     LavaTheme::default()
@@ -63,122 +74,107 @@ fn light_theme() -> LavaTheme {
     }
 }
 
-// ── Marker component ──────────────────────────────────────────────────────────
+// ── Markers for the two labels that change text (not colour) ─────────────────
 
-#[derive(Component)]
-struct UiRoot;
+#[derive(Component, Default, Clone)]
+struct ToggleLabel;
 
-// ── Initial UI build ──────────────────────────────────────────────────────────
+#[derive(Component, Default, Clone)]
+struct ClickLabel;
 
-fn setup_ui(mut commands: Commands, theme: Res<LavaTheme>) {
-    let root = commands
-        .spawn((Name::new("UI Root"), UiRoot, Node::default()))
-        .id();
-    let mut ui = UIBuilder::start_from_entity(commands, root, false, Some(theme.clone()));
-    populate_ui(&mut ui, &theme);
-    ui.build();
+// ── UI, spawned once ─────────────────────────────────────────────────────────
+
+fn scene() -> impl SceneList {
+    bsn_list![Camera2d, root()]
 }
 
-fn populate_ui(ui: &mut UIBuilder, theme: &LavaTheme) {
-    let is_light = theme.bg_color.to_srgba().red > 0.5;
-    let toggle_label = if is_light {
-        "Switch to Dark"
-    } else {
-        "Switch to Light"
+fn root() -> impl Scene {
+    let options: Vec<_> = ["Option A", "Option B", "Option C"]
+        .into_iter()
+        .map(|label| {
+            bsn! {
+                scenes::button(label)
+                Node { width: percent(100), height: {px(44.0)} }
+                on(count_click)
+            }
+        })
+        .collect();
+
+    bsn! {
+        scenes::ui_root()
+        // The root's own background is a token too, so the whole window repaints.
+        ThemedBackground(ColorToken::PanelBg)
+        Children [
+            scenes::header("Theme Showcase"),
+            (
+                scenes::column(12.0)
+                Node {
+                    width: {px(420.0)},
+                    padding: {UiRect::all(px(24.0))},
+                    border: {UiRect::all(px(2.0))},
+                    border_radius: {BorderRadius::all(px(12.0))},
+                }
+                ThemedBackground(ColorToken::PanelBg)
+                ThemedBorderColor(ColorToken::PanelBorder)
+                Children [
+                    scenes::header("Sample Panel") ThemedFont(FontToken::Label),
+                    scenes::label("Every colour here is a token. Switching the theme\nrepaints these entities in place."),
+                    (scenes::label("clicks: 0") ClickLabel),
+                    {options},
+                ]
+            ),
+            (
+                scenes::button("Switch to Light")
+                Node { width: {px(240.0)}, height: {px(52.0)} }
+                ToggleLabel
+                on(|_: On<Activate>, mut mode: ResMut<ThemeMode>| {
+                    *mode = match *mode {
+                        ThemeMode::Dark => ThemeMode::Light,
+                        ThemeMode::Light => ThemeMode::Dark,
+                    };
+                })
+            ),
+        ]
+    }
+}
+
+fn count_click(_activate: On<Activate>, mut clicks: ResMut<Clicks>) {
+    clicks.0 += 1;
+}
+
+// ── The entire theme switch ──────────────────────────────────────────────────
+
+/// One resource write. There is no UI code here at all: `apply_theme_tokens` does the
+/// rest, next frame, for every entity carrying a token.
+fn apply_theme_mode(mode: Res<ThemeMode>, mut theme: ResMut<LavaTheme>) {
+    *theme = match *mode {
+        ThemeMode::Dark => dark_theme(),
+        ThemeMode::Light => light_theme(),
     };
-
-    ui.set_node(Node {
-        width: Val::Percent(100.0),
-        height: Val::Percent(100.0),
-        align_items: AlignItems::Center,
-        justify_content: JustifyContent::Center,
-        flex_direction: FlexDirection::Column,
-        row_gap: Val::Px(24.0),
-        ..default()
-    });
-    ui.insert_bundle(BackgroundColor(theme.bg_color));
-
-    // Title
-    ui.with_child(|h| {
-        h.with_text(
-            "Theme Showcase",
-            Some(TextStyle {
-                font_size: Some(theme.text.header_size),
-                color: Some(theme.text.header_color),
-                ..default()
-            }),
-        );
-    });
-
-    // Sample card
-    ui.with_child(|card| {
-        card.display_flex()
-            .flex_column()
-            .gap_px(12.0)
-            .padding_all_px(24.0)
-            .bg_color(theme.bg_color.mix(&Color::BLACK, 0.08))
-            .border_all_px(2.0, theme.border_color)
-            .border_radius_all_px(12.0)
-            .width_px(400.0);
-
-        card.add_text_child(
-            "Sample Panel",
-            Some(TextStyle::size_color(22.0, theme.text.header_color)),
-        );
-        card.add_text_child(
-            "All colors adapt when the theme changes.\nNo individual component updates needed.",
-            Some(TextStyle {
-                font_size: Some(16.0),
-                color: Some(theme.text.label_color),
-                ..default()
-            }),
-        );
-
-        for label in ["Option A", "Option B", "Option C"] {
-            card.add_button_observe(
-                label,
-                |btn| {
-                    btn.size(Val::Percent(100.0), Val::Px(44.0));
-                },
-                move |_: On<Activate>| info!("Selected: {}", label),
-            );
-        }
-    });
-
-    // Theme toggle button
-    ui.add_button_observe(
-        toggle_label,
-        |btn| {
-            btn.size_px(220.0, 52.0);
-        },
-        |_: On<Activate>, mut mode: ResMut<ThemeMode>| {
-            *mode = if *mode == ThemeMode::Dark {
-                ThemeMode::Light
-            } else {
-                ThemeMode::Dark
-            };
-        },
-    );
 }
 
-// ── Rebuild on theme change ───────────────────────────────────────────────────
-
-fn on_theme_changed(
-    commands: Commands,
+/// Text content is not a colour, so it is not a token -- these two labels are updated the
+/// ordinary way, by a system with a marker query.
+fn update_labels(
     mode: Res<ThemeMode>,
-    mut lava_theme: ResMut<LavaTheme>,
-    ui_root: Query<Entity, With<UiRoot>>,
+    clicks: Res<Clicks>,
+    toggle: Single<&Children, With<ToggleLabel>>,
+    click_label: Single<&mut Text, (With<ClickLabel>, Without<ToggleLabel>)>,
+    mut texts: Query<&mut Text, Without<ClickLabel>>,
 ) {
-    let new_theme = if *mode == ThemeMode::Light {
-        light_theme()
-    } else {
-        dark_theme()
-    };
-    *lava_theme = new_theme.clone();
-
-    if let Ok(root) = ui_root.single() {
-        let mut ui = UIBuilder::start_from_entity(commands, root, true, Some(new_theme.clone()));
-        populate_ui(&mut ui, &new_theme);
-        ui.build();
+    if clicks.is_changed() {
+        let mut label = click_label;
+        ***label = format!("clicks: {}", clicks.0);
+    }
+    if mode.is_changed() {
+        // The button's caption lives on its child entity.
+        for child in toggle.iter() {
+            if let Ok(mut text) = texts.get_mut(child) {
+                **text = match *mode {
+                    ThemeMode::Dark => "Switch to Light".to_string(),
+                    ThemeMode::Light => "Switch to Dark".to_string(),
+                };
+            }
+        }
     }
 }

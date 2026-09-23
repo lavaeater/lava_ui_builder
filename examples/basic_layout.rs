@@ -1,4 +1,9 @@
-//! Basic layout example for `lava_ui_builder`.
+//! Basic layout example for `lava_ui_builder`, on the **older** APIs.
+//!
+//! This example is deliberately left on the bundle-function and imperative `UIBuilder`
+//! APIs, which are still supported: it is the reference for code that has not migrated.
+//! For the same layout on the scene (BSN) API, see `bsn_layout.rs` -- and
+//! `bsn-migration.md` for how the two relate.
 //!
 //! Demonstrates:
 //! - Creating a root UI node with `ui_root`

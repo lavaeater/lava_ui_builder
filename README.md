@@ -1,8 +1,76 @@
 # Lava UI Builder
 
-The purpose of this crate is to enable code-based UI building with the builder pattern and reasonable defaults and themes.
+Code-based UI for Bevy 0.19, with reasonable defaults and a theme you can swap at runtime.
 
-It should be EASY to create a simple menu to start the game, make a choice in a game or display some game info.
+It should be EASY to create a simple menu to start the game, make a choice in a game or
+display some game info.
+
+## Usage
+
+Widgets are **scenes**, built with Bevy's `bsn!` macro. They take no theme argument:
+colours and fonts resolve from the `LavaTheme` resource through tokens.
+
+```rust
+use bevy::prelude::*;
+use bevy::ui_widgets::Activate;
+use lava_ui_builder::{scenes, LavaTheme, LavaUiPlugin};
+
+fn main() {
+    App::new()
+        .add_plugins((DefaultPlugins, LavaUiPlugin))
+        .insert_resource(LavaTheme::default())
+        .add_systems(Startup, menu.spawn())
+        .run();
+}
+
+fn menu() -> impl SceneList {
+    bsn_list![Camera2d, (
+        scenes::ui_root()
+        Children [
+            scenes::header("My Game"),
+            (
+                scenes::button("Play")
+                // the action lives next to the button
+                on(|_: On<Activate>| info!("play!"))
+            ),
+            (
+                // same widget, one field overridden -- this is patching
+                scenes::button("Quit")
+                Node { width: px(260) }
+                on(|_: On<Activate>, mut exit: MessageWriter<AppExit>| {
+                    exit.write(AppExit::Success);
+                })
+            ),
+        ]
+    )]
+}
+```
+
+Switching theme is one resource write — every themed entity repaints in place, nothing is
+respawned:
+
+```rust
+*theme = light_theme();
+```
+
+Three things to know:
+
+* **Themed widgets cannot be recoloured by patching.** `apply_theme_tokens` rewrites
+  `TextColor` and `InteractionPalette` each frame for entities carrying tokens. Use
+  `scenes::text` / `scenes::button_colored` / `scenes::list_item` when the colour is
+  content rather than theme, and never write `BackgroundColor` on an entity that has an
+  `InteractionPalette` — swap the palette instead.
+* **`on(..)` needs a `Clone` observer system**, so capture `Copy` data (or clone into the
+  closure) rather than moving a `String` in.
+* **An optional child is `Option<impl SceneList>`**: `cond.then(|| bsn_list![..])`.
+
+Start from `examples/bsn_layout.rs`. `examples/basic_layout.rs` is deliberately left on
+the older bundle-function and `UIBuilder` APIs, which are still supported; see
+`bsn-migration.md` for how the three APIs relate.
+
+**Updating a project that depends on this crate?** `migration-guide.md` is the
+step-by-step version: what actually breaks (short list), what improves for free, and how
+to move a screen at a time rather than all at once.
 
 ## Issues & Simplification TODOs
 

@@ -6,10 +6,13 @@
 //!   Bottom-center: game time + team scores
 //!   Bottom-right: ammo counter
 //!
+//! On the scene (BSN) API: the HUD is one tree, corner-anchored with flexbox, and the
+//! live numbers are ordinary marker-driven systems.
+//!
 //! Run with: `cargo run --example hud`
 
 use bevy::prelude::*;
-use lava_ui_builder::*;
+use lava_ui_builder::{scenes, LavaTheme, LavaUiPlugin, ProgressBar};
 
 fn main() {
     App::new()
@@ -91,200 +94,191 @@ fn setup_scene(mut commands: Commands) {
 
 // ── UI marker components ──────────────────────────────────────────────────────
 
-#[derive(Component)]
+#[derive(Component, Default, Clone)]
 struct HpBar;
-#[derive(Component)]
+#[derive(Component, Default, Clone)]
 struct HpText;
-#[derive(Component)]
+#[derive(Component, Default, Clone)]
 struct ScoreText;
-#[derive(Component)]
+#[derive(Component, Default, Clone)]
 struct AmmoText;
 
-// ── HUD setup ─────────────────────────────────────────────────────────────────
+// ── HUD ───────────────────────────────────────────────────────────────────────
 
-#[allow(clippy::too_many_lines)]
-fn setup_hud(commands: Commands, theme: Res<LavaTheme>, state: Res<GameState>) {
-    let mut ui = UIBuilder::new(commands, Some(theme.clone()));
+const PANEL_BG: Color = Color::srgba(0.0, 0.0, 0.0, 0.7);
+const PANEL_BORDER: Color = Color::srgb(0.3, 0.3, 0.4);
 
-    // Full-screen column: top row / flex-grow spacer / bottom row
-    ui.set_node(Node {
-        position_type: PositionType::Absolute,
-        width: percent(100.0),
-        height: percent(100.0),
-        flex_direction: FlexDirection::Column,
-        justify_content: JustifyContent::SpaceBetween,
-        padding: rect_all(px(16.0)),
-        ..default()
-    });
+/// The HUD needs the initial `GameState`, so it is a scene-spawning system rather than a
+/// `scene.spawn()` one.
+fn setup_hud(mut commands: Commands, state: Res<GameState>) {
+    commands.spawn_scene(hud(&state));
+}
 
-    // ── Top row ─────────────────────────────────────────────────────────
-    ui.add_row(|top| {
-        top.width_percent(100.0)
-            .justify_space_between()
-            .align_items_start();
+/// The shared smoked-glass panel the three corners use.
+fn hud_panel() -> impl Scene {
+    bsn! {
+        scenes::column(4.0)
+        Node {
+            padding: {UiRect::all(px(12.0))},
+            border: {UiRect::all(px(1.0))},
+            border_radius: {BorderRadius::all(px(8.0))},
+        }
+        BackgroundColor(PANEL_BG)
+        BorderColor::all(PANEL_BORDER)
+    }
+}
 
-        // Minimap (top-left)
-        top.with_child(|mm| {
-            mm.display_flex()
-                .flex_column()
-                .align_items_center()
-                .justify_center()
-                .size_px(160.0, 160.0)
-                .bg_color(Color::srgba(0.05, 0.15, 0.05, 0.92))
-                .border_all_px(2.0, Color::srgb(0.4, 0.6, 0.4))
-                .border_radius_all_px(6.0);
-
-            mm.add_text_child(
-                "[ MAP ]",
-                Some(TextStyle::size_color(14.0, Color::srgb(0.5, 0.8, 0.5))),
-            );
-
-            // Fake blips
-            mm.add_row(|blips| {
-                blips.gap_px(20.0).margin_top(Val::Px(10.0));
-                for color in [Color::srgb(0.3, 0.6, 1.0), Color::srgb(1.0, 0.5, 0.3)] {
-                    blips.with_child(|b| {
-                        b.size_px(8.0, 8.0)
-                            .bg_color(color)
-                            .border_radius_all_px(4.0);
-                    });
+fn hud(state: &GameState) -> impl Scene {
+    bsn! {
+        Node {
+            position_type: PositionType::Absolute,
+            width: percent(100),
+            height: percent(100),
+            flex_direction: FlexDirection::Column,
+            justify_content: JustifyContent::SpaceBetween,
+            padding: {UiRect::all(px(16.0))},
+        }
+        Pickable::IGNORE
+        Children [
+            // Top row: minimap on the left.
+            (
+                scenes::row(0.0)
+                Node {
+                    width: percent(100),
+                    justify_content: JustifyContent::SpaceBetween,
+                    align_items: AlignItems::Start,
                 }
-            });
-        });
-    });
+                Children [ minimap() ]
+            ),
+            // Bottom row: hp / score / ammo.
+            (
+                scenes::row(0.0)
+                Node {
+                    width: percent(100),
+                    justify_content: JustifyContent::SpaceBetween,
+                    align_items: AlignItems::End,
+                }
+                Children [
+                    hp_panel(state),
+                    score_panel(state),
+                    ammo_panel(state),
+                ]
+            ),
+        ]
+    }
+}
 
-    // ── Bottom row ───────────────────────────────────────────────────────
-    ui.add_row(|bottom| {
-        bottom
-            .width_percent(100.0)
-            .justify_space_between()
-            .align_items_end();
+fn minimap() -> impl Scene {
+    let blips: Vec<_> = [Color::srgb(0.3, 0.6, 1.0), Color::srgb(1.0, 0.5, 0.3)]
+        .into_iter()
+        .map(|color| {
+            bsn! {
+                Node { width: {px(8.0)}, height: {px(8.0)}, border_radius: {BorderRadius::MAX} }
+                BackgroundColor(color)
+            }
+        })
+        .collect();
 
-        // HP panel (bottom-left)
-        bottom.with_child(|hp_panel| {
-            hp_panel
-                .display_flex()
-                .flex_column()
-                .gap_px(6.0)
-                .padding_all_px(12.0)
-                .bg_color(Color::srgba(0.0, 0.0, 0.0, 0.7))
-                .border_all_px(1.0, Color::srgb(0.3, 0.3, 0.4))
-                .border_radius_all_px(8.0);
+    bsn! {
+        scenes::column(0.0)
+        Node {
+            width: {px(160.0)},
+            height: {px(160.0)},
+            align_items: AlignItems::Center,
+            justify_content: JustifyContent::Center,
+            border: {UiRect::all(px(2.0))},
+            border_radius: {BorderRadius::all(px(6.0))},
+        }
+        BackgroundColor(Color::srgba(0.05, 0.15, 0.05, 0.92))
+        BorderColor::all(Color::srgb(0.4, 0.6, 0.4))
+        Children [
+            scenes::text("[ MAP ]", 14.0, Color::srgb(0.5, 0.8, 0.5)),
+            (
+                scenes::row(20.0)
+                Node { margin: {UiRect::top(px(10.0))} }
+                Children [ {blips} ]
+            ),
+        ]
+    }
+}
 
-            hp_panel.with_child(|label_row| {
-                label_row
-                    .display_flex()
-                    .flex_row()
-                    .justify_space_between()
-                    .width_px(200.0);
-                label_row.add_text_child(
-                    "HP",
-                    Some(TextStyle::size_color(14.0, Color::srgb(0.8, 0.8, 0.8))),
-                );
-                label_row.with_child(|t| {
-                    t.insert(HpText).with_text(
-                        format!("{:.0}/{:.0}", state.hp, state.hp_max),
-                        Some(TextStyle::size_color(14.0, Color::srgb(0.5, 1.0, 0.5))),
-                    );
-                });
-            });
-
-            hp_panel.with_child(|bar_wrap| {
-                bar_wrap.insert(HpBar).insert_bundle(progress_bar(
-                    state.hp / state.hp_max,
-                    200.0,
-                    16.0,
+fn hp_panel(state: &GameState) -> impl Scene {
+    let hp_now = format!("{:.0}/{:.0}", state.hp, state.hp_max);
+    let fraction = state.hp / state.hp_max;
+    bsn! {
+        hud_panel()
+        Node { row_gap: {px(6.0)} }
+        Children [
+            (
+                scenes::row(0.0)
+                Node { width: {px(200.0)}, justify_content: JustifyContent::SpaceBetween }
+                Children [
+                    scenes::text("HP", 14.0, Color::srgb(0.8, 0.8, 0.8)),
+                    (scenes::text(hp_now, 14.0, Color::srgb(0.5, 1.0, 0.5)) HpText),
+                ]
+            ),
+            (
+                scenes::progress_bar(
+                    fraction, 200.0, 16.0,
                     Color::srgb(0.2, 0.85, 0.3),
                     Color::srgb(0.15, 0.15, 0.15),
-                ));
-            });
-        });
+                )
+                HpBar
+            ),
+        ]
+    }
+}
 
-        // Score panel (bottom-center)
-        bottom.with_child(|score_panel| {
-            score_panel
-                .display_flex()
-                .flex_column()
-                .align_items_center()
-                .gap_px(4.0)
-                .padding_all_px(12.0)
-                .bg_color(Color::srgba(0.0, 0.0, 0.0, 0.7))
-                .border_all_px(1.0, Color::srgb(0.3, 0.3, 0.4))
-                .border_radius_all_px(8.0);
+fn score_panel(state: &GameState) -> impl Scene {
+    let clock = game_time_str(state.elapsed);
+    let score = format!("{} - {}", state.score_alpha, state.score_bravo);
+    bsn! {
+        hud_panel()
+        Node { align_items: AlignItems::Center }
+        Children [
+            scenes::text(clock, 14.0, Color::srgb(0.9, 0.9, 0.9)),
+            (
+                scenes::row(16.0)
+                Node { align_items: AlignItems::Center }
+                Children [
+                    scenes::text("ALPHA", 14.0, Color::srgb(0.4, 0.6, 1.0)),
+                    (scenes::text(score, 22.0, Color::WHITE) ScoreText),
+                    scenes::text("BRAVO", 14.0, Color::srgb(1.0, 0.5, 0.3)),
+                ]
+            ),
+        ]
+    }
+}
 
-            score_panel.add_text_child(
-                game_time_str(state.elapsed),
-                Some(TextStyle::size_color(14.0, Color::srgb(0.9, 0.9, 0.9))),
-            );
+fn ammo_panel(state: &GameState) -> impl Scene {
+    let ammo = format!("{} / {}", state.ammo, state.ammo_max);
+    let pips: Vec<_> = (0..state.ammo_max)
+        .map(|i| {
+            let color = if i < state.ammo {
+                Color::srgb(1.0, 0.85, 0.2)
+            } else {
+                Color::srgb(0.2, 0.2, 0.2)
+            };
+            bsn! {
+                Node { width: {px(6.0)}, height: {px(16.0)}, border_radius: {BorderRadius::all(px(2.0))} }
+                BackgroundColor(color)
+            }
+        })
+        .collect();
 
-            score_panel.with_child(|score_row| {
-                score_row
-                    .display_flex()
-                    .flex_row()
-                    .gap_px(16.0)
-                    .align_items_center();
-
-                score_row.add_text_child(
-                    "ALPHA",
-                    Some(TextStyle::size_color(14.0, Color::srgb(0.4, 0.6, 1.0))),
-                );
-                score_row.with_child(|s| {
-                    s.insert(ScoreText).with_text(
-                        format!("{} — {}", state.score_alpha, state.score_bravo),
-                        Some(TextStyle::size_color(22.0, Color::WHITE)),
-                    );
-                });
-                score_row.add_text_child(
-                    "BRAVO",
-                    Some(TextStyle::size_color(14.0, Color::srgb(1.0, 0.5, 0.3))),
-                );
-            });
-        });
-
-        // Ammo panel (bottom-right)
-        bottom.with_child(|ammo_panel| {
-            ammo_panel
-                .display_flex()
-                .flex_column()
-                .align_items_end()
-                .gap_px(4.0)
-                .padding_all_px(12.0)
-                .bg_color(Color::srgba(0.0, 0.0, 0.0, 0.7))
-                .border_all_px(1.0, Color::srgb(0.3, 0.3, 0.4))
-                .border_radius_all_px(8.0);
-
-            ammo_panel.add_text_child(
-                "AMMO",
-                Some(TextStyle::size_color(12.0, Color::srgb(0.7, 0.7, 0.7))),
-            );
-
-            ammo_panel.with_child(|t| {
-                t.insert(AmmoText).with_text(
-                    format!("{} / {}", state.ammo, state.ammo_max),
-                    Some(TextStyle::size_color(28.0, Color::WHITE)),
-                );
-            });
-
-            // Ammo pip row
-            ammo_panel.add_row(|pips| {
-                pips.gap_px(3.0).margin_top(Val::Px(4.0));
-                for i in 0..state.ammo_max {
-                    let color = if i < state.ammo {
-                        Color::srgb(1.0, 0.85, 0.2)
-                    } else {
-                        Color::srgb(0.2, 0.2, 0.2)
-                    };
-                    pips.with_child(|pip| {
-                        pip.size_px(6.0, 16.0)
-                            .bg_color(color)
-                            .border_radius_all_px(2.0);
-                    });
-                }
-            });
-        });
-    });
-
-    ui.build();
+    bsn! {
+        hud_panel()
+        Node { align_items: AlignItems::End }
+        Children [
+            scenes::text("AMMO", 12.0, Color::srgb(0.7, 0.7, 0.7)),
+            (scenes::text(ammo, 28.0, Color::WHITE) AmmoText),
+            (
+                scenes::row(3.0)
+                Node { margin: {UiRect::top(px(4.0))} }
+                Children [ {pips} ]
+            ),
+        ]
+    }
 }
 
 // ── Runtime sync systems ──────────────────────────────────────────────────────
@@ -312,7 +306,7 @@ fn sync_score_text(state: Res<GameState>, mut texts: Query<&mut Text, With<Score
         return;
     }
     for mut t in &mut texts {
-        **t = format!("{} — {}", state.score_alpha, state.score_bravo);
+        **t = format!("{} - {}", state.score_alpha, state.score_bravo);
     }
 }
 

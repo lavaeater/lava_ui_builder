@@ -5,9 +5,9 @@ edition = "2024"
 description = "A fluent UI builder for Bevy"
 license = "MIT OR Apache-2.0"
 
-[features]
-default = []
-feathers = []
+# No features. There was a `feathers` one, but it gated nothing: `bevy_feathers` is an
+# unconditional dependency and the feathers helpers always compiled. Passing
+# `--features feathers` was a no-op, so it is gone rather than wired up.
 
 # "ui" is expanded by hand (ui_api, ui_bevy_render) instead of used directly:
 # it pulls in "default_platform", which hardcodes "android-game-activity" --
@@ -16,17 +16,78 @@ feathers = []
 # dependency across the whole build). See civilization/Cargo.toml for the
 # matching expansion on the consumer side.
 [dependencies]
-bevy = { version = "0.19.0", default-features = false, features = ["ui", "bevy_feathers"] }
+# "bevy_scene" is listed explicitly even though "ui" happens to pull it in today
+# (ui -> scene -> bevy_scene): the `bsn!` macro and the whole `scenes` module live there,
+# so the dependency is real and should not rest on a transitive edge of the "ui" feature.
+bevy = { version = "0.19.0", default-features = false, features = ["ui", "bevy_feathers", "bevy_scene"] }
 
 [dev-dependencies]
 bevy = { version = "0.19.0", default-features = true }
 
-#[lints]
-#workspace = true
+# Lints. aliens-vs-suburbia keeps this set in `[workspace.lints.clippy]` and its
+# members inherit it with `workspace = true`; this crate is a submodule rather than a
+# workspace member, so inheritance is not available and the set is kept in sync by hand.
+[lints.clippy]
+pedantic = { level = "warn", priority = -1 }
+#nursery = { level = "warn", priority = -1 }    # BETA LINTS
+# Nursery lint that (a) fires inside `#[derive(Reflect)]` output, where nothing can be
+# done, and (b) turns readable if/else blocks into map_or_else closure soup.
+option_if_let_else = "allow"
+# Nursery: wants `a.mul_add(b, c)` and `.hypot()` in place of plain float expressions.
+# UI maths is not numerics; the rewrites cost readability for no visible gain.
+suboptimal_flops = "allow"
+imprecise_flops = "allow"
+# Nursery: `pub(crate)` items inside private modules. Stylistic; the explicit
+# visibility documents intent even where it is technically redundant.
+redundant_pub_crate = "allow"
+# Layout maths is bounded by window/UI dimensions, not genuinely overflow-prone.
+arithmetic_side_effects = "allow"
+as_conversions = "allow"
+# Screen <-> UI maths casts between f32/i32/usize constantly. The try_from/from
+# rewrites these lints ask for are noise for values bounded by the viewport.
+cast_precision_loss = "allow"
+cast_possible_truncation = "allow"
+cast_sign_loss = "allow"
+cast_possible_wrap = "allow"
+# Local helper fns/consts declared next to their use site read fine.
+items_after_statements = "allow"
+# Bevy components and style structs legitimately carry many bools.
+struct_excessive_bools = "allow"
+# Wants `&self` getters on small Copy components taken by value. Bevy queries hand
+# out references; `self`-by-value reads as an oddity for a few bytes that the
+# compiler copies anyway.
+trivially_copy_pass_by_ref = "allow"
+# Wants `assert_eq!(x, [] as [T; 0])` in place of `assert!(x.is_empty())`. The
+# turbofish-heavy rewrite is harder to read than what it replaces.
+assert_is_empty = "allow"
+doc_markdown = "allow"
+exit = "deny"
+expect_used = "deny"
+indexing_slicing = "deny"
+missing_errors_doc = "allow"
+must_use_candidate = "allow"
+needless_pass_by_value = "allow"
+panic = "deny"
+panic_in_result_fn = "deny"
+similar_names = "allow"
+string_slice = "deny"
+todo = "deny"
+too_many_lines = "allow"
+unchecked_time_subtraction = "deny"
+unimplemented = "deny"
+unreachable = "deny"
+unwrap_used = "deny"
+used_underscore_binding = "allow"
+wildcard_imports = "allow"
 
 [[example]]
 name = "basic_layout"
 path = "examples/basic_layout.rs"
+
+# The BSN/scene port of basic_layout. Both are kept while the migration is in flight.
+[[example]]
+name = "bsn_layout"
+path = "examples/bsn_layout.rs"
 
 [[example]]
 name = "buttons"
