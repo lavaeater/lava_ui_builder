@@ -15,7 +15,7 @@
 
 use bevy::platform::collections::HashMap;
 use bevy::prelude::*;
-use lava_ui_builder::{scenes, LavaTheme, LavaUiPlugin};
+use lava_ui_builder::{LavaTheme, LavaUiPlugin, scenes};
 
 // ============================================================================
 // Mock domain types (stand-ins for the original game project)
@@ -152,7 +152,6 @@ fn spawn_mock_players(mut commands: Commands) {
 // ============================================================================
 //
 // Components used in `bsn!` need `Default + Clone`.
-
 #[derive(Component, Default, Clone)]
 pub struct TradeCardUiRoot;
 
@@ -229,8 +228,10 @@ fn setup_trade_ui(
 fn trade_card_panel(stacks: &[CardStack]) -> impl Scene {
     let rows: Vec<_> = (1..=9)
         .filter_map(|pile_value| {
-            let mut pile: Vec<&CardStack> =
-                stacks.iter().filter(|s| s.pile_value == pile_value).collect();
+            let mut pile: Vec<&CardStack> = stacks
+                .iter()
+                .filter(|s| s.pile_value == pile_value)
+                .collect();
             if pile.is_empty() {
                 return None;
             }
@@ -313,9 +314,7 @@ fn game_info_panel(roster: &[(String, Faction, bool)], activity: &str) -> impl S
 
     let activity_rows: Vec<_> = roster
         .iter()
-        .map(|(name, faction, is_human)| {
-            activity_row(name, *faction, *is_human, activity)
-        })
+        .map(|(name, faction, is_human)| activity_row(name, *faction, *is_human, activity))
         .collect();
 
     scenes::collapsible(

@@ -17,7 +17,7 @@
 
 use bevy::platform::collections::HashMap;
 use bevy::prelude::*;
-use lava_ui_builder::{scenes, LavaTheme, LavaUiPlugin};
+use lava_ui_builder::{LavaTheme, LavaUiPlugin, scenes};
 
 const COLS: i16 = 5;
 const ROWS: i16 = 4;

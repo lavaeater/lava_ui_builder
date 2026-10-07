@@ -12,7 +12,7 @@
 //! Run with: `cargo run --example hud`
 
 use bevy::prelude::*;
-use lava_ui_builder::{scenes, LavaTheme, LavaUiPlugin, ProgressBar};
+use lava_ui_builder::{LavaTheme, LavaUiPlugin, ProgressBar, scenes};
 
 fn main() {
     App::new()

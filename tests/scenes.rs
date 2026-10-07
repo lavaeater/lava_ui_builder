@@ -15,12 +15,12 @@
 use bevy::asset::AssetPlugin;
 use bevy::prelude::*;
 use bevy::scene::ScenePlugin;
+use bevy::ui::ScrollPosition;
 use bevy::ui_widgets::Button as WidgetsButton;
 use lava_ui_builder::{
-    scenes, tokens, CollapseToggleButton, Collapsible, CollapsibleContent, ColorToken,
-    InteractionPalette, LavaTheme, ProgressBar, ProgressBarFill, ThemedTextColor,
+    CollapseToggleButton, Collapsible, CollapsibleContent, ColorToken, InteractionPalette,
+    LavaTheme, ProgressBar, ProgressBarFill, ThemedTextColor, scenes, tokens,
 };
-use bevy::ui::ScrollPosition;
 
 /// Bevy's scene resolution needs an asset server and the scene plugin; the token system
 /// plus a `LavaTheme` are what turn the widgets' tokens into concrete colors. Nothing
@@ -145,7 +145,10 @@ fn a_progress_bar_sizes_its_fill_child_from_the_value() {
     );
 
     let world = app.world();
-    assert_eq!(world.get::<ProgressBar>(entity).map(|b| b.value), Some(0.25));
+    assert_eq!(
+        world.get::<ProgressBar>(entity).map(|b| b.value),
+        Some(0.25)
+    );
     let fill = world.get::<Children>(entity).expect("fill child")[0];
     assert!(world.get::<ProgressBarFill>(fill).is_some());
     assert_eq!(
@@ -191,9 +194,11 @@ fn a_collapsed_section_hides_its_content_and_shows_the_collapsed_arrow() {
         Some(Display::None)
     );
     let toggle_text = world.get::<Children>(children[0]).unwrap()[0];
-    assert!(world
-        .get::<Text>(toggle_text)
-        .is_some_and(|t| t.0.starts_with('\u{25b6}')));
+    assert!(
+        world
+            .get::<Text>(toggle_text)
+            .is_some_and(|t| t.0.starts_with('\u{25b6}'))
+    );
 }
 
 #[test]
@@ -210,7 +215,11 @@ fn a_selected_list_item_uses_the_selected_palette() {
         "selection has to be visible without hovering"
     );
     // Not theme-driven: the token system must leave these alone.
-    assert!(world.get::<lava_ui_builder::ThemedPalette>(unselected).is_none());
+    assert!(
+        world
+            .get::<lava_ui_builder::ThemedPalette>(unselected)
+            .is_none()
+    );
 }
 
 #[test]
@@ -293,7 +302,11 @@ fn a_coloured_button_is_not_repainted_by_the_theme() {
     app.update();
 
     let world = app.world();
-    assert!(world.get::<lava_ui_builder::ThemedPalette>(entity).is_none());
+    assert!(
+        world
+            .get::<lava_ui_builder::ThemedPalette>(entity)
+            .is_none()
+    );
     assert_eq!(world.get::<InteractionPalette>(entity).unwrap().none, red);
 }
 
@@ -312,11 +325,18 @@ fn the_palette_still_honours_the_legacy_interaction_component() {
     };
     let entity = app
         .world_mut()
-        .spawn((palette.clone(), BackgroundColor(Color::NONE), Interaction::None))
+        .spawn((
+            palette.clone(),
+            BackgroundColor(Color::NONE),
+            Interaction::None,
+        ))
         .id();
 
     app.update();
-    assert_eq!(app.world().get::<BackgroundColor>(entity).unwrap().0, palette.none);
+    assert_eq!(
+        app.world().get::<BackgroundColor>(entity).unwrap().0,
+        palette.none
+    );
 
     *app.world_mut().get_mut::<Interaction>(entity).unwrap() = Interaction::Hovered;
     app.update();

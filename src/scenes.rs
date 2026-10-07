@@ -44,8 +44,8 @@ use bevy::ui_widgets::Button as WidgetsButton;
 
 use crate::{
     CollapseToggleButton, Collapsible, CollapsibleContent, ColorToken, FontToken,
-    InteractionPalette, ProgressBar, ProgressBarFill, ThemedBorderColor, ThemedFont,
-    ThemedPalette, ThemedTextColor,
+    InteractionPalette, ProgressBar, ProgressBarFill, ThemedBorderColor, ThemedFont, ThemedPalette,
+    ThemedTextColor,
 };
 
 /// Default button metrics.

@@ -10,11 +10,11 @@
 //! Run with: `cargo run --example buttons`
 
 use bevy::feathers::theme::{ThemedText, UiTheme};
-use bevy::feathers::{controls::FeathersButton, dark_theme::create_dark_theme, FeathersPlugins};
+use bevy::feathers::{FeathersPlugins, controls::FeathersButton, dark_theme::create_dark_theme};
 use bevy::prelude::*;
 use bevy::ui::InteractionDisabled;
 use bevy::ui_widgets::Activate;
-use lava_ui_builder::{scenes, LavaTheme, LavaUiPlugin};
+use lava_ui_builder::{LavaTheme, LavaUiPlugin, scenes};
 
 fn main() {
     App::new()

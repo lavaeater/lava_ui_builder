@@ -7,7 +7,7 @@
 //! Run with: `cargo run --example scoreboard`
 
 use bevy::prelude::*;
-use lava_ui_builder::{scenes, LavaTheme, LavaUiPlugin};
+use lava_ui_builder::{LavaTheme, LavaUiPlugin, scenes};
 
 fn main() {
     App::new()

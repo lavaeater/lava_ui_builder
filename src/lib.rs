@@ -550,7 +550,11 @@ impl Plugin for LavaUiPlugin {
                 Update,
                 (
                     // Tokens resolve before the palette turns into a BackgroundColor.
-                    (tokens::apply_theme_tokens, systems::apply_interaction_palette).chain(),
+                    (
+                        tokens::apply_theme_tokens,
+                        systems::apply_interaction_palette,
+                    )
+                        .chain(),
                     systems::handle_scroll_input,
                     systems::update_collapsible_visibility,
                     systems::sync_progress_bars,

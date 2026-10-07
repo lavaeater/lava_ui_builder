@@ -12,7 +12,7 @@
 
 use bevy::prelude::*;
 use bevy::ui_widgets::Activate;
-use lava_ui_builder::{scenes, InteractionPalette, LavaTheme, LavaUiPlugin};
+use lava_ui_builder::{InteractionPalette, LavaTheme, LavaUiPlugin, scenes};
 
 fn main() {
     App::new()

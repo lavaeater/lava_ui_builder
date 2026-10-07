@@ -9,8 +9,8 @@
 
 use bevy::prelude::*;
 use bevy::ui_widgets::Activate;
+use lava_ui_builder::{ButtonTheme, LavaTheme, LavaUiPlugin, TextTheme, scenes};
 use lava_ui_builder::{ColorToken, ThemedTextColor};
-use lava_ui_builder::{scenes, ButtonTheme, LavaTheme, LavaUiPlugin, TextTheme};
 
 fn main() {
     App::new()
@@ -104,7 +104,11 @@ fn toggle_theme_on_key(
         return;
     }
     *light = !*light;
-    *theme = if *light { light_theme() } else { LavaTheme::default() };
+    *theme = if *light {
+        light_theme()
+    } else {
+        LavaTheme::default()
+    };
 }
 
 fn light_theme() -> LavaTheme {

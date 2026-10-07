@@ -13,8 +13,8 @@
 use bevy::prelude::*;
 use bevy::ui_widgets::Activate;
 use lava_ui_builder::{
-    scenes, ButtonTheme, ColorToken, FontToken, LavaTheme, LavaUiPlugin, TextTheme,
-    ThemedBackground, ThemedBorderColor, ThemedFont,
+    ButtonTheme, ColorToken, FontToken, LavaTheme, LavaUiPlugin, TextTheme, ThemedBackground,
+    ThemedBorderColor, ThemedFont, scenes,
 };
 
 fn main() {
