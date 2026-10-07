@@ -24,8 +24,13 @@ pub use tokens::{
 // props struct to `ButtonBundleProps` (the un-suffixed names now belong to the BSN scene
 // API, which doesn't fit this crate's `Commands`-based builder). Keep the historical
 // `ButtonProps` / `feathers_button_fn` names as aliases so downstream code is unaffected.
-#[expect(deprecated, reason = "button_bundle is the imperative counterpart to the BSN button scene")]
-pub use bevy::feathers::controls::{button_bundle as feathers_button_fn, ButtonBundleProps as ButtonProps, ButtonVariant};
+#[expect(
+    deprecated,
+    reason = "button_bundle is the imperative counterpart to the BSN button scene"
+)]
+pub use bevy::feathers::controls::{
+    ButtonBundleProps as ButtonProps, ButtonVariant, button_bundle as feathers_button_fn,
+};
 pub use bevy::feathers::rounded_corners::RoundedCorners;
 pub use bevy::feathers::theme::ThemedText;
 pub use bevy::ui::InteractionDisabled;

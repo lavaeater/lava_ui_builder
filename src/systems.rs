@@ -144,8 +144,18 @@ pub fn world_follower_system(
             continue;
         };
         if let Ok(pos) = camera.world_to_viewport(camera_transform, tr.translation()) {
-            node.left = Val::Px(follower_axis(origin.x, pos.x, follower.offset.x, ui_scale.0));
-            node.top = Val::Px(follower_axis(origin.y, pos.y, follower.offset.y, ui_scale.0));
+            node.left = Val::Px(follower_axis(
+                origin.x,
+                pos.x,
+                follower.offset.x,
+                ui_scale.0,
+            ));
+            node.top = Val::Px(follower_axis(
+                origin.y,
+                pos.y,
+                follower.offset.y,
+                ui_scale.0,
+            ));
         }
     }
 }

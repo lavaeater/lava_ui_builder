@@ -11,7 +11,7 @@ use bevy::feathers::rounded_corners::RoundedCorners;
 use bevy::ui::InteractionDisabled;
 use bevy::ui_widgets::Activate;
 
-use crate::{feathers_button_fn, ButtonBuilder, ButtonProps, ButtonVariant, UIBuilder};
+use crate::{ButtonBuilder, ButtonProps, ButtonVariant, UIBuilder, feathers_button_fn};
 
 // ============================================================================
 // ButtonBuilder — for imperative button customization via add_themed_button()
@@ -208,7 +208,6 @@ impl UIBuilder<'_, '_> {
         let button_entity = self.current_entity;
         let btn = self.theme.button.clone();
         let button_bundle = feathers_button_fn(props, overrides, Spawn(Text::new(text_str)));
-
 
         self.commands
             .entity(button_entity)
