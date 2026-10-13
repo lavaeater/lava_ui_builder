@@ -14,23 +14,55 @@ use crate::{
 // ============================================================================
 
 /// Generic mouse wheel scroll handler for any entity with `ScrollPosition`.
-/// Applies scroll delta to hovered scrollable elements.
+///
+/// The hovered entity is usually a row or its text, not the scroll container, so this
+/// walks up from it. The innermost container that can still move in the wheel's direction
+/// takes the scroll; once a nested list hits its end, the wheel passes to the pane around
+/// it. Only one container moves per wheel event, so a list never slides out from under
+/// the cursor while it is being scrolled.
+///
+/// The offset is clamped to the content: Bevy clamps the *rendered* offset but not the
+/// component, so an unclamped value runs past the end and scrolling back seems dead.
 pub fn handle_scroll_input(
     mut mouse_wheel_events: MessageReader<MouseWheel>,
     hover_map: Res<HoverMap>,
-    mut scroll_query: Query<&mut ScrollPosition>,
+    mut scroll_query: Query<(&mut ScrollPosition, &ComputedNode, &Node)>,
+    parents: Query<&ChildOf>,
 ) {
     for mouse_wheel in mouse_wheel_events.read() {
         let dy = match mouse_wheel.unit {
             MouseScrollUnit::Line => mouse_wheel.y * 20.0,
             MouseScrollUnit::Pixel => mouse_wheel.y,
         };
+        if dy == 0.0 {
+            continue;
+        }
 
         for pointer_map in hover_map.values() {
-            for entity in pointer_map.keys() {
-                if let Ok(mut scroll_position) = scroll_query.get_mut(*entity) {
-                    scroll_position.y -= dy;
-                    scroll_position.y = scroll_position.y.max(0.0);
+            // The deepest hovered entity; every other hit is on its ancestor chain or
+            // beside it, and the chain is what decides who scrolls.
+            let Some(hovered) = pointer_map
+                .keys()
+                .max_by_key(|entity| parents.iter_ancestors(**entity).count())
+            else {
+                continue;
+            };
+
+            for entity in std::iter::once(*hovered).chain(parents.iter_ancestors(*hovered)) {
+                let Ok((mut scroll_position, computed, node)) = scroll_query.get_mut(entity)
+                else {
+                    continue;
+                };
+                if node.overflow.y != OverflowAxis::Scroll {
+                    continue;
+                }
+                let max = ((computed.content_size().y - computed.size().y)
+                    * computed.inverse_scale_factor())
+                .max(0.0);
+                let next = (scroll_position.y - dy).clamp(0.0, max);
+                if next != scroll_position.y {
+                    scroll_position.y = next;
+                    break;
                 }
             }
         }
