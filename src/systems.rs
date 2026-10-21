@@ -49,8 +49,7 @@ pub fn handle_scroll_input(
             };
 
             for entity in std::iter::once(*hovered).chain(parents.iter_ancestors(*hovered)) {
-                let Ok((mut scroll_position, computed, node)) = scroll_query.get_mut(entity)
-                else {
+                let Ok((mut scroll_position, computed, node)) = scroll_query.get_mut(entity) else {
                     continue;
                 };
                 if node.overflow.y != OverflowAxis::Scroll {
