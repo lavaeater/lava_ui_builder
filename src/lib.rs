@@ -559,10 +559,11 @@ impl Plugin for LavaUiPlugin {
                     systems::handle_scroll_input,
                     systems::update_collapsible_visibility,
                     systems::sync_progress_bars,
-                    systems::world_follower_system,
                     adapt_ui_scale,
                 ),
-            );
+            ).add_systems(PostUpdate, 
+                          systems::world_follower_system
+                             .before(TransformSystems::Propagate));
     }
 }
 
