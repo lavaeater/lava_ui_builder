@@ -10,6 +10,7 @@ use bevy::prelude::*;
 
 mod builder;
 mod button_builder;
+pub mod crawl;
 pub mod scenes;
 pub mod systems;
 pub mod tokens;

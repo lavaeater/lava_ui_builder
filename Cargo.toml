@@ -5,9 +5,13 @@ edition = "2024"
 description = "A fluent UI builder for Bevy"
 license = "MIT OR Apache-2.0"
 
-# No features. There was a `feathers` one, but it gated nothing: `bevy_feathers` is an
+# There was a `feathers` feature, but it gated nothing: `bevy_feathers` is an
 # unconditional dependency and the feathers helpers always compiled. Passing
 # `--features feathers` was a no-op, so it is gone rather than wired up.
+[features]
+# Serialize/Deserialize on the plain data types (`crawl::CrawlSpec`), for hosts that keep
+# them in files.
+serde = ["dep:serde"]
 
 # "ui" is expanded by hand (ui_api, ui_bevy_render) instead of used directly:
 # it pulls in "default_platform", which hardcodes "android-game-activity" --
@@ -20,6 +24,7 @@ license = "MIT OR Apache-2.0"
 # (ui -> scene -> bevy_scene): the `bsn!` macro and the whole `scenes` module live there,
 # so the dependency is real and should not rest on a transitive edge of the "ui" feature.
 bevy = { version = "0.19.0", default-features = false, features = ["ui", "bevy_feathers", "bevy_scene"] }
+serde = { version = "1", features = ["derive"], optional = true }
 
 [dev-dependencies]
 bevy = { version = "0.19.0", default-features = true }
@@ -116,3 +121,6 @@ path = "examples/scoreboard.rs"
 [[example]]
 name = "dark_light_theme"
 path = "examples/dark_light_theme.rs"
+[[example]]
+name = "crawl"
+path = "examples/crawl.rs"

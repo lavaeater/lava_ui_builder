@@ -89,6 +89,17 @@ API; still used by most examples.
 - Components used inside `bsn!` need `Default + Clone`, or `#[derive(FromTemplate)]` when
   they hold an `Entity` (resolved from a `#Name`) or an asset handle
 
+### Crawls (`src/crawl.rs`)
+Story text over the game: `CrawlStyle::Scroll { tilt }` (rolls up; `project` lays the
+lines on a tilted plane so they shrink without gapping) or `Typewriter` (a bottom box, one
+page per paragraph, the untyped rest kept as an invisible `TextSpan` so words never jump
+lines). `CrawlPlugin` (separate from `LavaUiPlugin`, add it yourself) owns a `CrawlQueue`;
+hosts send `ShowCrawl` / `AdvanceCrawl` / `ClearCrawls` and read `CrawlFinished`. Runs on
+`Time<Real>`. Text colours come from `LavaTheme.text` as plain `TextColor` (not tokens,
+because the crawl fades them). `CrawlProgress` is the pure timing state, unit-tested;
+`tests/crawl.rs` drives the plugin headless. `CrawlSpec` is serde-able behind the
+`serde` feature. `cargo run --example crawl` to see it.
+
 ### `systems.rs`
 `LavaUiPlugin` (defined in `lib.rs`) registers:
 - `apply_interaction_palette` — applies `InteractionPalette` colors. Reads `Hovered` and
