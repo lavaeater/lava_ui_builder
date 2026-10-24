@@ -21,7 +21,9 @@ use lava_ui_builder::crawl::{
 fn test_app() -> App {
     let mut app = App::new();
     app.add_plugins((MinimalPlugins, CrawlPlugin))
-        .insert_resource(TimeUpdateStrategy::ManualDuration(Duration::from_millis(100)));
+        .insert_resource(TimeUpdateStrategy::ManualDuration(Duration::from_millis(
+            100,
+        )));
     app
 }
 
@@ -53,8 +55,10 @@ fn roots(app: &mut App) -> usize {
 #[test]
 fn crawls_show_one_at_a_time_and_report_when_done() {
     let mut app = test_app();
-    app.world_mut().write_message(ShowCrawl(dialog("first", &["hi"])));
-    app.world_mut().write_message(ShowCrawl(dialog("second", &["bye"])));
+    app.world_mut()
+        .write_message(ShowCrawl(dialog("first", &["hi"])));
+    app.world_mut()
+        .write_message(ShowCrawl(dialog("second", &["bye"])));
     app.update();
 
     assert_eq!(roots(&mut app), 1, "one crawl on screen");
@@ -89,8 +93,10 @@ fn crawls_show_one_at_a_time_and_report_when_done() {
 #[test]
 fn clearing_drops_everything_without_a_finish() {
     let mut app = test_app();
-    app.world_mut().write_message(ShowCrawl(dialog("a", &["x"])));
-    app.world_mut().write_message(ShowCrawl(dialog("b", &["y"])));
+    app.world_mut()
+        .write_message(ShowCrawl(dialog("a", &["x"])));
+    app.world_mut()
+        .write_message(ShowCrawl(dialog("b", &["y"])));
     app.update();
     app.world_mut().write_message(ClearCrawls);
     app.update();

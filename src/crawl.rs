@@ -330,7 +330,10 @@ pub fn exit_depth(height: f32, tilt: f32) -> f32 {
 
 /// Splits `text` after its first `chars` characters, on a character boundary.
 pub fn split_at_chars(text: &str, chars: usize) -> (&str, &str) {
-    let at = text.char_indices().nth(chars).map_or(text.len(), |(i, _)| i);
+    let at = text
+        .char_indices()
+        .nth(chars)
+        .map_or(text.len(), |(i, _)| i);
     text.split_at_checked(at).unwrap_or((text, ""))
 }
 
@@ -611,12 +614,7 @@ fn draw_scroll(
     mut queue: ResMut<CrawlQueue>,
     theme: Option<Res<LavaTheme>>,
     mut roots: Query<(&ComputedNode, &mut BackgroundColor), With<CrawlRoot>>,
-    mut lines: Query<(
-        &ScrollLine,
-        &ComputedNode,
-        &mut UiTransform,
-        &mut TextColor,
-    )>,
+    mut lines: Query<(&ScrollLine, &ComputedNode, &mut UiTransform, &mut TextColor)>,
     mut heights: Local<Vec<(usize, f32)>>,
 ) {
     let Some(active) = queue.active.as_mut() else {
@@ -790,7 +788,11 @@ mod tests {
         assert!(p.page_complete(&spec), "first press finishes typing");
         assert_eq!(p.page, 0);
         p.advance(&spec);
-        assert_eq!((p.page, p.visible_chars(&spec)), (1, 0), "second turns the page");
+        assert_eq!(
+            (p.page, p.visible_chars(&spec)),
+            (1, 0),
+            "second turns the page"
+        );
         p.advance(&spec);
         p.advance(&spec);
         assert!(p.closing.is_some(), "past the last page it closes");
@@ -871,10 +873,16 @@ mod tests {
         let (bottom, s0) = project(0.0, h, 1.0);
         assert_eq!((bottom, s0), (h, 1.0));
         let (mid_y, mid_s) = project(400.0, h, 1.0);
-        assert!(mid_y < h - 300.0 && mid_y > 0.0, "compressed, still on screen");
+        assert!(
+            mid_y < h - 300.0 && mid_y > 0.0,
+            "compressed, still on screen"
+        );
         assert!(mid_s < 1.0 && mid_s > 0.5);
         let (exit_y, _) = project(exit_depth(h, 1.0), h, 1.0);
-        assert!(exit_y.abs() < 1e-2, "exit_depth lands on the top edge: {exit_y}");
+        assert!(
+            exit_y.abs() < 1e-2,
+            "exit_depth lands on the top edge: {exit_y}"
+        );
     }
 
     #[test]

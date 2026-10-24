@@ -561,9 +561,11 @@ impl Plugin for LavaUiPlugin {
                     systems::sync_progress_bars,
                     adapt_ui_scale,
                 ),
-            ).add_systems(PostUpdate, 
-                          systems::world_follower_system
-                             .before(TransformSystems::Propagate));
+            )
+            .add_systems(
+                PostUpdate,
+                systems::world_follower_system.before(TransformSystems::Propagate),
+            );
     }
 }
 
