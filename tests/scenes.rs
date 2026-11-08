@@ -119,7 +119,7 @@ fn a_caller_patch_overrides_the_token_and_leaves_the_rest() {
     let entity = spawn(
         &mut app,
         bsn! {
-            scenes::label("hello")
+            @scenes::label("hello")
             ThemedTextColor(ColorToken::HeaderText)
         },
     );
@@ -162,7 +162,7 @@ fn a_collapsible_resolves_its_name_references_to_the_section_entity() {
     let mut app = test_app();
     let section = spawn(
         &mut app,
-        scenes::collapsible("Details", false, bsn_list![scenes::label("inner")]),
+        scenes::collapsible("Details", false, bsn_list![@scenes::label("inner")]),
     );
 
     let world = app.world();
@@ -258,8 +258,8 @@ fn replace_children_swaps_the_contents_and_keeps_the_parent() {
     let parent = spawn(
         &mut app,
         bsn! {
-            scenes::column(2.0)
-            Children [ scenes::label("old a"), scenes::label("old b") ]
+            @scenes::column(2.0)
+            Children [ @scenes::label("old a"), @scenes::label("old b") ]
         },
     );
     assert_eq!(app.world().get::<Children>(parent).unwrap().len(), 2);
@@ -269,9 +269,9 @@ fn replace_children_swaps_the_contents_and_keeps_the_parent() {
         &mut commands,
         parent,
         bsn_list![
-            scenes::label("new a"),
-            scenes::label("new b"),
-            scenes::label("new c"),
+            @scenes::label("new a"),
+            @scenes::label("new b"),
+            @scenes::label("new c"),
         ],
     );
     app.update();

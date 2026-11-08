@@ -226,6 +226,10 @@ fn follower_axis(origin: f32, viewport_pos: f32, offset: f32, ui_scale: f32) -> 
     clippy::type_complexity,
     reason = "a Bevy query tuple; splitting it into a type alias hurts more than it helps"
 )]
+#[allow(
+    deprecated,
+    reason = "the legacy `Interaction` fallback keeps old `bevy_ui::widget::Button`s coloured"
+)]
 pub fn apply_interaction_palette(
     mut query: Query<(
         &InteractionPalette,

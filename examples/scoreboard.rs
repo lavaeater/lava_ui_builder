@@ -92,11 +92,11 @@ fn setup_ui(mut commands: Commands, players: Query<&PlayerStats>) {
         .collect();
 
     commands.spawn_scene(bsn! {
-        scenes::ui_root()
+        @scenes::ui_root()
         Children [
-            scenes::text("SCOREBOARD", 40.0, Color::WHITE),
+            @scenes::text("SCOREBOARD", 40.0, Color::WHITE),
             (
-                scenes::column(4.0)
+                @scenes::column(4.0)
                 Node {
                     padding: {UiRect::all(px(16.0))},
                     border: {UiRect::all(px(2.0))},
@@ -105,7 +105,7 @@ fn setup_ui(mut commands: Commands, players: Query<&PlayerStats>) {
                 BackgroundColor({Color::srgba(0.05, 0.05, 0.12, 0.96)})
                 BorderColor::all(Color::srgb(0.3, 0.3, 0.55))
                 Children [
-                    header_row(),
+                    @header_row(),
                     {rows},
                 ]
             ),
@@ -115,7 +115,7 @@ fn setup_ui(mut commands: Commands, players: Query<&PlayerStats>) {
 
 fn table_row(bg: Color) -> impl Scene {
     bsn! {
-        scenes::row(8.0)
+        @scenes::row(8.0)
         Node {
             align_items: AlignItems::Center,
             padding: {UiRect::all(px(8.0))},
@@ -127,7 +127,7 @@ fn table_row(bg: Color) -> impl Scene {
 
 fn cell(content: impl Into<String>, width: f32, color: Color) -> impl Scene {
     bsn! {
-        scenes::text(content.into(), CELL_SIZE, color)
+        @scenes::text(content.into(), CELL_SIZE, color)
         Node { width: {px(width)} }
     }
 }
@@ -147,9 +147,9 @@ fn header_row() -> impl Scene {
         .map(|(label, width)| cell(label, width, HEADER_COLOR))
         .collect();
     bsn! {
-        table_row(Color::srgb(0.18, 0.18, 0.32))
+        @table_row(Color::srgb(0.18, 0.18, 0.32))
         Children [
-            dot(None),
+            @dot(None),
             {cells},
         ]
     }
@@ -170,9 +170,9 @@ fn player_row(index: usize, stats: &PlayerStats) -> impl Scene {
         cell(format!("{kd:.2}"), 70.0, HEADER_COLOR),
     ];
     bsn! {
-        table_row(bg)
+        @table_row(bg)
         Children [
-            dot(Some(stats.team.color())),
+            @dot(Some(stats.team.color())),
             {cells},
         ]
     }

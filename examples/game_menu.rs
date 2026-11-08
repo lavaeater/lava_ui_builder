@@ -100,7 +100,7 @@ const QUALITY_UNSELECTED: InteractionPalette = InteractionPalette {
 // ── UI ────────────────────────────────────────────────────────────────────────
 
 fn scene() -> impl SceneList {
-    bsn_list![Camera2d, root()]
+    bsn_list![Camera2d, @root()]
 }
 
 fn root() -> impl Scene {
@@ -113,9 +113,9 @@ fn root() -> impl Scene {
             justify_content: JustifyContent::Center,
         }
         Children [
-            (main_panel() MainPanel),
-            (audio_panel() AudioPanel Node { display: Display::None }),
-            (graphics_panel() GraphicsPanel Node { display: Display::None }),
+            (@main_panel() MainPanel),
+            (@audio_panel() AudioPanel Node { display: Display::None }),
+            (@graphics_panel() GraphicsPanel Node { display: Display::None }),
         ]
     }
 }
@@ -123,7 +123,7 @@ fn root() -> impl Scene {
 /// The shared panel chrome. Callers patch a marker and `display` onto it.
 fn panel_shell() -> impl Scene {
     bsn! {
-        scenes::column(16.0)
+        @scenes::column(16.0)
         Node {
             width: {px(340.0)},
             align_items: AlignItems::Center,
@@ -139,31 +139,31 @@ fn panel_shell() -> impl Scene {
 /// A menu button: the standard themed button at a consistent size.
 fn menu_button(label: &str, width: f32, height: f32) -> impl Scene {
     bsn! {
-        scenes::button(label)
+        @scenes::button(label)
         Node { width: {px(width)}, height: {px(height)} }
     }
 }
 
 fn main_panel() -> impl Scene {
     bsn! {
-        panel_shell()
+        @panel_shell()
         Children [
-            scenes::text("MY GAME", 52.0, Color::WHITE),
-            scenes::text("Main Menu", 18.0, Color::srgb(0.7, 0.7, 0.9)),
+            @scenes::text("MY GAME", 52.0, Color::WHITE),
+            @scenes::text("Main Menu", 18.0, Color::srgb(0.7, 0.7, 0.9)),
             (
-                menu_button("Play", 260.0, 56.0)
+                @menu_button("Play", 260.0, 56.0)
                 on(|_: On<Activate>| info!("Play!"))
             ),
             (
-                menu_button("Audio", 260.0, 56.0)
+                @menu_button("Audio", 260.0, 56.0)
                 on(|_: On<Activate>, mut s: ResMut<MenuScreen>| *s = MenuScreen::Audio)
             ),
             (
-                menu_button("Graphics", 260.0, 56.0)
+                @menu_button("Graphics", 260.0, 56.0)
                 on(|_: On<Activate>, mut s: ResMut<MenuScreen>| *s = MenuScreen::Graphics)
             ),
             (
-                scenes::button_colored(
+                @scenes::button_colored(
                     "Quit",
                     Color::srgb(0.50, 0.10, 0.10),
                     Color::srgb(0.62, 0.14, 0.14),
@@ -181,27 +181,27 @@ fn main_panel() -> impl Scene {
 
 fn audio_panel() -> impl Scene {
     bsn! {
-        panel_shell()
+        @panel_shell()
         Children [
-            scenes::text("Audio Settings", 32.0, Color::WHITE),
+            @scenes::text("Audio Settings", 32.0, Color::WHITE),
             (
-                scenes::row(12.0)
+                @scenes::row(12.0)
                 Node { align_items: AlignItems::Center }
                 Children [
-                    scenes::text("Volume", 20.0, Color::srgb(0.8, 0.8, 0.8)),
+                    @scenes::text("Volume", 20.0, Color::srgb(0.8, 0.8, 0.8)),
                     (
-                        menu_button("-", 40.0, 40.0)
+                        @menu_button("-", 40.0, 40.0)
                         on(|_: On<Activate>, mut s: ResMut<AudioSettings>| {
                             s.volume = s.volume.saturating_sub(1).max(0);
                         })
                     ),
                     (
-                        scenes::text("7", 22.0, Color::WHITE)
+                        @scenes::text("7", 22.0, Color::WHITE)
                         Node { width: {px(36.0)} }
                         VolumeText
                     ),
                     (
-                        menu_button("+", 40.0, 40.0)
+                        @menu_button("+", 40.0, 40.0)
                         on(|_: On<Activate>, mut s: ResMut<AudioSettings>| {
                             s.volume = s.volume.saturating_add(1).min(10);
                         })
@@ -209,13 +209,13 @@ fn audio_panel() -> impl Scene {
                 ]
             ),
             (
-                menu_button("Toggle Mute", 220.0, 48.0)
+                @menu_button("Toggle Mute", 220.0, 48.0)
                 on(|_: On<Activate>, mut s: ResMut<AudioSettings>| {
                     s.muted = !s.muted;
                     info!("Muted: {}", s.muted);
                 })
             ),
-            back_button(),
+            @back_button(),
         ]
     }
 }
@@ -229,7 +229,7 @@ fn graphics_panel() -> impl Scene {
     .into_iter()
     .map(|(label, quality)| {
         bsn! {
-            scenes::button_colored(
+            @scenes::button_colored(
                 label,
                 QUALITY_UNSELECTED.none,
                 QUALITY_UNSELECTED.hovered,
@@ -243,22 +243,22 @@ fn graphics_panel() -> impl Scene {
     .collect();
 
     bsn! {
-        panel_shell()
+        @panel_shell()
         Children [
-            scenes::text("Graphics Settings", 32.0, Color::WHITE),
-            scenes::text("Quality", 18.0, Color::srgb(0.7, 0.7, 0.9)),
+            @scenes::text("Graphics Settings", 32.0, Color::WHITE),
+            @scenes::text("Quality", 18.0, Color::srgb(0.7, 0.7, 0.9)),
             (
-                scenes::row(8.0)
+                @scenes::row(8.0)
                 Children [ {choices} ]
             ),
-            back_button(),
+            @back_button(),
         ]
     }
 }
 
 fn back_button() -> impl Scene {
     bsn! {
-        scenes::button_colored(
+        @scenes::button_colored(
             "Back",
             Color::srgb(0.20, 0.20, 0.35),
             Color::srgb(0.28, 0.28, 0.45),

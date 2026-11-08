@@ -33,7 +33,7 @@ still validated by running the examples.
 
 ## Architecture
 
-`lava_ui_builder` is a Bevy 0.19 UI library. It provides three APIs; the scene API is the
+`lava_ui_builder` is a Bevy 0.20 UI library. It provides three APIs; the scene API is the
 one to use for new code. See `bsn-migration.md` for how they relate and what moved, and
 `migration-guide.md` when updating a *downstream* project that depends on this crate.
 

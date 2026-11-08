@@ -1,8 +1,3 @@
-#![expect(
-    deprecated,
-    reason = "feathers_button_fn wraps bevy_feathers' imperative button_bundle template"
-)]
-
 use bevy::ecs::spawn::Spawn;
 use bevy::ecs::system::IntoObserverSystem;
 use bevy::prelude::*;
@@ -178,7 +173,7 @@ impl UIBuilder<'_, '_> {
     pub fn feathers_button<M>(
         &mut self,
         text: impl Into<String>,
-        handler: impl IntoObserverSystem<Activate, (), M>,
+        handler: impl IntoObserverSystem<Activate, M>,
     ) -> &mut Self {
         self.feathers_button_with_overrides(text, ButtonProps::default(), (), handler, |_| {})
     }
@@ -193,7 +188,7 @@ impl UIBuilder<'_, '_> {
         text: impl Into<String>,
         props: ButtonProps,
         overrides: B,
-        handler: impl IntoObserverSystem<Activate, (), M>,
+        handler: impl IntoObserverSystem<Activate, M>,
         f: F,
     ) -> &mut Self
     where
@@ -243,7 +238,7 @@ impl UIBuilder<'_, '_> {
     pub fn feathers_button_primary<M, F>(
         &mut self,
         text: impl Into<String>,
-        handler: impl IntoObserverSystem<Activate, (), M>,
+        handler: impl IntoObserverSystem<Activate, M>,
         f: F,
     ) -> &mut Self
     where
@@ -265,7 +260,7 @@ impl UIBuilder<'_, '_> {
     pub fn feathers_button_disabled<M>(
         &mut self,
         text: impl Into<String>,
-        handler: impl IntoObserverSystem<Activate, (), M>,
+        handler: impl IntoObserverSystem<Activate, M>,
     ) -> &mut Self {
         self.feathers_button_with_overrides(
             text,
@@ -281,7 +276,7 @@ impl UIBuilder<'_, '_> {
         &mut self,
         text: impl Into<String>,
         marker: T,
-        handler: impl IntoObserverSystem<Activate, (), M>,
+        handler: impl IntoObserverSystem<Activate, M>,
     ) -> &mut Self
     where
         T: Component,
@@ -294,7 +289,7 @@ impl UIBuilder<'_, '_> {
         &mut self,
         text: impl Into<String>,
         corners: RoundedCorners,
-        handler: impl IntoObserverSystem<Activate, (), M>,
+        handler: impl IntoObserverSystem<Activate, M>,
     ) -> &mut Self {
         self.feathers_button_with_overrides(
             text,

@@ -85,7 +85,7 @@ struct ClickLabel;
 // ── UI, spawned once ─────────────────────────────────────────────────────────
 
 fn scene() -> impl SceneList {
-    bsn_list![Camera2d, root()]
+    bsn_list![Camera2d, @root()]
 }
 
 fn root() -> impl Scene {
@@ -93,7 +93,7 @@ fn root() -> impl Scene {
         .into_iter()
         .map(|label| {
             bsn! {
-                scenes::button(label)
+                @scenes::button(label)
                 Node { width: percent(100), height: {px(44.0)} }
                 on(count_click)
             }
@@ -101,13 +101,13 @@ fn root() -> impl Scene {
         .collect();
 
     bsn! {
-        scenes::ui_root()
+        @scenes::ui_root()
         // The root's own background is a token too, so the whole window repaints.
         ThemedBackground(ColorToken::PanelBg)
         Children [
-            scenes::header("Theme Showcase"),
+            @scenes::header("Theme Showcase"),
             (
-                scenes::column(12.0)
+                @scenes::column(12.0)
                 Node {
                     width: {px(420.0)},
                     padding: {UiRect::all(px(24.0))},
@@ -117,14 +117,14 @@ fn root() -> impl Scene {
                 ThemedBackground(ColorToken::PanelBg)
                 ThemedBorderColor(ColorToken::PanelBorder)
                 Children [
-                    scenes::header("Sample Panel") ThemedFont(FontToken::Label),
-                    scenes::label("Every colour here is a token. Switching the theme\nrepaints these entities in place."),
-                    (scenes::label("clicks: 0") ClickLabel),
+                    @scenes::header("Sample Panel") ThemedFont(FontToken::Label),
+                    @scenes::label("Every colour here is a token. Switching the theme\nrepaints these entities in place."),
+                    (@scenes::label("clicks: 0") ClickLabel),
                     {options},
                 ]
             ),
             (
-                scenes::button("Switch to Light")
+                @scenes::button("Switch to Light")
                 Node { width: {px(240.0)}, height: {px(52.0)} }
                 ToggleLabel
                 on(|_: On<Activate>, mut mode: ResMut<ThemeMode>| {

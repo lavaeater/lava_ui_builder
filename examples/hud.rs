@@ -117,7 +117,7 @@ fn setup_hud(mut commands: Commands, state: Res<GameState>) {
 /// The shared smoked-glass panel the three corners use.
 fn hud_panel() -> impl Scene {
     bsn! {
-        scenes::column(4.0)
+        @scenes::column(4.0)
         Node {
             padding: {UiRect::all(px(12.0))},
             border: {UiRect::all(px(1.0))},
@@ -142,26 +142,26 @@ fn hud(state: &GameState) -> impl Scene {
         Children [
             // Top row: minimap on the left.
             (
-                scenes::row(0.0)
+                @scenes::row(0.0)
                 Node {
                     width: percent(100),
                     justify_content: JustifyContent::SpaceBetween,
                     align_items: AlignItems::Start,
                 }
-                Children [ minimap() ]
+                Children [ @minimap() ]
             ),
             // Bottom row: hp / score / ammo.
             (
-                scenes::row(0.0)
+                @scenes::row(0.0)
                 Node {
                     width: percent(100),
                     justify_content: JustifyContent::SpaceBetween,
                     align_items: AlignItems::End,
                 }
                 Children [
-                    hp_panel(state),
-                    score_panel(state),
-                    ammo_panel(state),
+                    @hp_panel(state),
+                    @score_panel(state),
+                    @ammo_panel(state),
                 ]
             ),
         ]
@@ -180,7 +180,7 @@ fn minimap() -> impl Scene {
         .collect();
 
     bsn! {
-        scenes::column(0.0)
+        @scenes::column(0.0)
         Node {
             width: {px(160.0)},
             height: {px(160.0)},
@@ -192,9 +192,9 @@ fn minimap() -> impl Scene {
         BackgroundColor(Color::srgba(0.05, 0.15, 0.05, 0.92))
         BorderColor::all(Color::srgb(0.4, 0.6, 0.4))
         Children [
-            scenes::text("[ MAP ]", 14.0, Color::srgb(0.5, 0.8, 0.5)),
+            @scenes::text("[ MAP ]", 14.0, Color::srgb(0.5, 0.8, 0.5)),
             (
-                scenes::row(20.0)
+                @scenes::row(20.0)
                 Node { margin: {UiRect::top(px(10.0))} }
                 Children [ {blips} ]
             ),
@@ -206,19 +206,19 @@ fn hp_panel(state: &GameState) -> impl Scene {
     let hp_now = format!("{:.0}/{:.0}", state.hp, state.hp_max);
     let fraction = state.hp / state.hp_max;
     bsn! {
-        hud_panel()
+        @hud_panel()
         Node { row_gap: {px(6.0)} }
         Children [
             (
-                scenes::row(0.0)
+                @scenes::row(0.0)
                 Node { width: {px(200.0)}, justify_content: JustifyContent::SpaceBetween }
                 Children [
-                    scenes::text("HP", 14.0, Color::srgb(0.8, 0.8, 0.8)),
-                    (scenes::text(hp_now, 14.0, Color::srgb(0.5, 1.0, 0.5)) HpText),
+                    @scenes::text("HP", 14.0, Color::srgb(0.8, 0.8, 0.8)),
+                    (@scenes::text(hp_now, 14.0, Color::srgb(0.5, 1.0, 0.5)) HpText),
                 ]
             ),
             (
-                scenes::progress_bar(
+                @scenes::progress_bar(
                     fraction, 200.0, 16.0,
                     Color::srgb(0.2, 0.85, 0.3),
                     Color::srgb(0.15, 0.15, 0.15),
@@ -233,17 +233,17 @@ fn score_panel(state: &GameState) -> impl Scene {
     let clock = game_time_str(state.elapsed);
     let score = format!("{} - {}", state.score_alpha, state.score_bravo);
     bsn! {
-        hud_panel()
+        @hud_panel()
         Node { align_items: AlignItems::Center }
         Children [
-            scenes::text(clock, 14.0, Color::srgb(0.9, 0.9, 0.9)),
+            @scenes::text(clock, 14.0, Color::srgb(0.9, 0.9, 0.9)),
             (
-                scenes::row(16.0)
+                @scenes::row(16.0)
                 Node { align_items: AlignItems::Center }
                 Children [
-                    scenes::text("ALPHA", 14.0, Color::srgb(0.4, 0.6, 1.0)),
-                    (scenes::text(score, 22.0, Color::WHITE) ScoreText),
-                    scenes::text("BRAVO", 14.0, Color::srgb(1.0, 0.5, 0.3)),
+                    @scenes::text("ALPHA", 14.0, Color::srgb(0.4, 0.6, 1.0)),
+                    (@scenes::text(score, 22.0, Color::WHITE) ScoreText),
+                    @scenes::text("BRAVO", 14.0, Color::srgb(1.0, 0.5, 0.3)),
                 ]
             ),
         ]
@@ -267,13 +267,13 @@ fn ammo_panel(state: &GameState) -> impl Scene {
         .collect();
 
     bsn! {
-        hud_panel()
+        @hud_panel()
         Node { align_items: AlignItems::End }
         Children [
-            scenes::text("AMMO", 12.0, Color::srgb(0.7, 0.7, 0.7)),
-            (scenes::text(ammo, 28.0, Color::WHITE) AmmoText),
+            @scenes::text("AMMO", 12.0, Color::srgb(0.7, 0.7, 0.7)),
+            (@scenes::text(ammo, 28.0, Color::WHITE) AmmoText),
             (
-                scenes::row(3.0)
+                @scenes::row(3.0)
                 Node { margin: {UiRect::top(px(4.0))} }
                 Children [ {pips} ]
             ),

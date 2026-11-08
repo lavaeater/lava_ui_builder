@@ -3,6 +3,7 @@ use std::collections::VecDeque;
 
 use bevy::color::palettes::basic::WHITE;
 use bevy::ecs::spawn::SpawnWith;
+use bevy::ecs::observer::IntoEntityObserver;
 use bevy::ecs::system::IntoObserverSystem;
 use bevy::ecs::template::FromTemplate;
 use bevy::picking::hover::Hovered;
@@ -20,18 +21,65 @@ pub use tokens::{
     ThemedTextColor,
 };
 
-// Re-export feathers types for external use
-// `bevy_feathers` 0.19 renamed the imperative button template to `button_bundle` and its
-// props struct to `ButtonBundleProps` (the un-suffixed names now belong to the BSN scene
-// API, which doesn't fit this crate's `Commands`-based builder). Keep the historical
-// `ButtonProps` / `feathers_button_fn` names as aliases so downstream code is unaffected.
-#[expect(
-    deprecated,
-    reason = "button_bundle is the imperative counterpart to the BSN button scene"
-)]
-pub use bevy::feathers::controls::{
-    ButtonBundleProps as ButtonProps, ButtonVariant, button_bundle as feathers_button_fn,
-};
+// Re-export feathers types for external use.
+// `bevy_feathers` 0.20 dropped its imperative button template (`button_bundle`); only the BSN
+// scene (`FeathersButton`) is left, which doesn't fit this crate's `Commands`-based builder.
+// `ButtonProps` / `feathers_button_fn` keep the old names and build the same parts as the
+// 0.20 scene, so the feathers styling systems (which key on `ButtonVariant`, `Hovered` and
+// the theme components) dress it the same way.
+pub use bevy::feathers::controls::ButtonVariant;
+
+/// What a feathers button looks like (the imperative counterpart of `FeathersButtonProps`).
+#[derive(Debug, Clone, Default)]
+pub struct ButtonProps {
+    pub variant: ButtonVariant,
+    pub corners: RoundedCorners,
+}
+
+/// A feathers button, as the 0.20 `FeathersButton` scene builds it: `overrides` are added
+/// on top, `caption` spawns the label. The font is Bevy's default (the scene loads
+/// feathers' own by path, which needs an asset server).
+pub fn feathers_button_fn<B: Bundle, C: bevy::ecs::spawn::SpawnableList<ChildOf> + Send + Sync + 'static>(
+    props: ButtonProps,
+    overrides: B,
+    caption: C,
+) -> impl Bundle {
+    use bevy::feathers::constants::size;
+    use bevy::feathers::focus::FocusIndicator;
+    use bevy::feathers::font_styles::InheritableFont;
+    use bevy::feathers::theme::{InheritableThemeTextColor, ThemeBackgroundColor};
+    use bevy::feathers::tokens;
+    use bevy::input_focus::tab_navigation::TabIndex;
+    use bevy::picking::cursor::EntityCursor;
+    use bevy::picking::hover::Hovered;
+    use bevy::window::SystemCursorIcon;
+    (
+        Node {
+            height: size::ROW_HEIGHT,
+            justify_content: JustifyContent::Center,
+            align_items: AlignItems::Center,
+            padding: UiRect::horizontal(px(8)),
+            border_radius: props.corners.to_border_radius(4.0),
+            ..default()
+        },
+        bevy::ui_widgets::Button,
+        props.variant,
+        Hovered::default(),
+        EntityCursor::System(SystemCursorIcon::Pointer),
+        TabIndex(0),
+        FocusIndicator,
+        ThemeBackgroundColor(tokens::BUTTON_BG),
+        InheritableThemeTextColor(tokens::BUTTON_TEXT),
+        InheritableFont {
+            font: Handle::default(),
+            font_size: size::MEDIUM_FONT,
+            weight: bevy::text::FontWeight::NORMAL,
+        },
+        overrides,
+        Children::spawn(caption),
+    )
+}
+
 pub use bevy::feathers::rounded_corners::RoundedCorners;
 pub use bevy::feathers::theme::ThemedText;
 pub use bevy::ui::InteractionDisabled;
@@ -235,15 +283,13 @@ pub fn label(text: impl Into<String>, theme: &TextTheme) -> impl Bundle {
 
 /// A themed button with text and an action defined as an [`Observer`].
 /// Uses the default button node layout (large, rounded, centered).
-pub fn themed_button<E, B, M, I>(
+pub fn themed_button<M, I>(
     text: impl Into<String>,
     action: I,
     theme: &ButtonTheme,
 ) -> impl Bundle
 where
-    E: EntityEvent,
-    B: Bundle,
-    I: IntoObserverSystem<E, B, M>,
+    I: IntoEntityObserver<M> + Sync,
 {
     themed_button_with_node(
         text,
@@ -261,15 +307,13 @@ where
 }
 
 /// A small themed button with text and an action.
-pub fn themed_button_small<E, B, M, I>(
+pub fn themed_button_small<M, I>(
     text: impl Into<String>,
     action: I,
     theme: &ButtonTheme,
 ) -> impl Bundle
 where
-    E: EntityEvent,
-    B: Bundle,
-    I: IntoObserverSystem<E, B, M>,
+    I: IntoEntityObserver<M> + Sync,
 {
     themed_button_with_node(
         text,
@@ -286,19 +330,16 @@ where
 }
 
 /// A themed button with a custom `Node` layout.
-pub fn themed_button_with_node<E, B, M, I>(
+pub fn themed_button_with_node<M, I>(
     text: impl Into<String>,
     action: I,
     theme: &ButtonTheme,
     button_node: Node,
 ) -> impl Bundle
 where
-    E: EntityEvent,
-    B: Bundle,
-    I: IntoObserverSystem<E, B, M>,
+    I: IntoEntityObserver<M> + Sync,
 {
     let text = text.into();
-    let action = IntoObserverSystem::into_system(action);
     let bg = theme.bg;
     let palette = InteractionPalette {
         none: theme.bg,
@@ -493,7 +534,7 @@ pub fn spawn_list_item<M>(
     parent: &mut ChildSpawnerCommands<'_>,
     name: impl Into<String>,
     selected: bool,
-    handler: impl IntoObserverSystem<Activate, (), M>,
+    handler: impl IntoObserverSystem<Activate, M>,
 ) where
     M: 'static,
 {

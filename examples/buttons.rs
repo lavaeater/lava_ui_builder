@@ -36,37 +36,37 @@ struct Pressed(String);
 struct StatusLine;
 
 fn scene() -> impl SceneList {
-    bsn_list![Camera2d, root()]
+    bsn_list![Camera2d, @root()]
 }
 
 fn root() -> impl Scene {
     bsn! {
-        scenes::ui_root()
+        @scenes::ui_root()
         Children [
-            scenes::header("Buttons"),
-            (scenes::text("", 20.0, Color::srgb(0.7, 0.9, 0.7)) StatusLine),
+            @scenes::header("Buttons"),
+            (@scenes::text("", 20.0, Color::srgb(0.7, 0.9, 0.7)) StatusLine),
 
-            scenes::section_label("-- themed --"),
+            @scenes::section_label("-- themed --"),
             (
-                scenes::button("Play")
+                @scenes::button("Play")
                 on(press("Play"))
             ),
             (
                 // Patching: same widget, bigger. Node is layout, so it patches cleanly.
-                scenes::button("Settings")
+                @scenes::button("Settings")
                 Node { width: {px(240.0)}, height: {px(70.0)} }
                 on(press("Settings"))
             ),
             (
-                scenes::button("X")
+                @scenes::button("X")
                 Node { width: {px(48.0)}, height: {px(48.0)} }
                 on(press("X"))
             ),
 
-            scenes::section_label("-- explicit colour --"),
+            @scenes::section_label("-- explicit colour --"),
             (
                 // Not themed: a red Quit stays red through a theme switch.
-                scenes::button_colored(
+                @scenes::button_colored(
                     "Quit",
                     Color::srgb(0.60, 0.15, 0.15),
                     Color::srgb(0.75, 0.20, 0.20),
@@ -75,9 +75,9 @@ fn root() -> impl Scene {
                 on(press("Quit"))
             ),
 
-            scenes::section_label("-- bevy feathers --"),
+            @scenes::section_label("-- bevy feathers --"),
             (
-                scenes::row(8.0)
+                @scenes::row(8.0)
                 Children [
                     (
                         @FeathersButton

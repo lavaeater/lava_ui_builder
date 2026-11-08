@@ -94,7 +94,7 @@ pub fn ui_root() -> impl Scene {
             flex_direction: FlexDirection::Column,
             row_gap: px(20),
         }
-        template_value(Pickable::IGNORE)
+        Pickable::IGNORE
     }
 }
 
@@ -136,12 +136,12 @@ fn button_base(content: impl Into<String>) -> impl Scene {
         WidgetsButton
         Hovered
         ThemedBorderColor(ColorToken::ButtonBorder)
-        Children [(
+        Children [
             Text({content})
             ThemedFont(FontToken::Button)
             ThemedTextColor(ColorToken::ButtonText)
-            template_value(Pickable::IGNORE)
-        )]
+            Pickable::IGNORE
+        ]
     }
 }
 
@@ -154,7 +154,7 @@ fn button_base(content: impl Into<String>) -> impl Scene {
 /// Size comes from [`BUTTON_WIDTH`]/[`BUTTON_HEIGHT`]; patch `Node` to change it.
 pub fn button(content: impl Into<String>) -> impl Scene {
     bsn! {
-        button_base(content)
+        @button_base(content)
         ThemedPalette {
             none: ColorToken::ButtonBg,
             hovered: ColorToken::ButtonBgHovered,
@@ -176,8 +176,8 @@ pub fn button_colored(
     pressed: Color,
 ) -> impl Scene {
     bsn! {
-        button_base(content)
-        template_value(InteractionPalette { none, hovered, pressed })
+        @button_base(content)
+        InteractionPalette { none: {none}, hovered: {hovered}, pressed: {pressed} }
     }
 }
 
@@ -189,11 +189,11 @@ pub fn progress_bar(value: f32, width: f32, height: f32, fill: Color, bg: Color)
         ProgressBar { value: {value}, fill_color: {fill} }
         Node { width: {px(width)}, height: {px(height)}, overflow: {Overflow::clip()} }
         BackgroundColor({bg})
-        Children [(
+        Children [
             ProgressBarFill
             Node { width: {percent(pct)}, height: percent(100) }
             BackgroundColor({fill})
-        )]
+        ]
     }
 }
 
@@ -222,7 +222,6 @@ pub fn collapsible(
         Collapsible { collapsed: {collapsed}, label: {label_text} }
         Node { flex_direction: FlexDirection::Column }
         Children [
-            (
                 CollapseToggleButton { target: #Section }
                 WidgetsButton
                 Hovered
@@ -235,14 +234,13 @@ pub fn collapsible(
                     padding: {UiRect::all(px(8.0))},
                     margin: {UiRect::bottom(px(4.0))},
                 }
-                Children [(
+                Children [
                     Text({toggle_text})
                     ThemedFont(FontToken::Label)
                     ThemedTextColor(ColorToken::ButtonText)
-                    template_value(Pickable::IGNORE)
-                )]
-            ),
-            (
+                    Pickable::IGNORE
+                ]
+            --
                 CollapsibleContent { parent: #Section }
                 Node {
                     flex_direction: FlexDirection::Column,
@@ -250,7 +248,6 @@ pub fn collapsible(
                     display: {display},
                 }
                 Children [ {content} ]
-            ),
         ]
     }
 }
@@ -384,7 +381,7 @@ pub fn scrollable_list(gap: f32) -> impl Scene {
 /// [`scrollable_list`], capped at `max_height` instead of growing.
 pub fn scrollable_list_bounded(gap: f32, max_height: f32) -> impl Scene {
     bsn! {
-        scrollable_list(gap)
+        @scrollable_list(gap)
         Node { flex_grow: 0.0, max_height: {px(max_height)} }
     }
 }
@@ -424,11 +421,11 @@ pub fn list_item(name: impl Into<String>, selected: bool) -> impl Scene {
         }
         WidgetsButton
         Hovered
-        template_value(InteractionPalette { none: bg, hovered, pressed })
-        Children [(
-            text(name, LIST_ITEM_TEXT_SIZE, fg)
-            template_value(Pickable::IGNORE)
-        )]
+        InteractionPalette { none: {bg}, hovered: {hovered}, pressed: {pressed} }
+        Children [
+            @text(name, LIST_ITEM_TEXT_SIZE, fg)
+            Pickable::IGNORE
+        ]
     }
 }
 
@@ -446,27 +443,27 @@ pub fn icon_button(glyph: impl Into<String>, size: f32) -> impl Scene {
         }
         WidgetsButton
         Hovered
-        template_value(InteractionPalette {
-            none: ICON_BUTTON_BG,
-            hovered: ICON_BUTTON_HOVERED,
-            pressed: ICON_BUTTON_PRESSED,
-        })
-        Children [(
-            text(glyph, ICON_BUTTON_TEXT_SIZE, ICON_BUTTON_TEXT)
-            template_value(Pickable::IGNORE)
-        )]
+        InteractionPalette {
+            none: {ICON_BUTTON_BG},
+            hovered: {ICON_BUTTON_HOVERED},
+            pressed: {ICON_BUTTON_PRESSED},
+        }
+        Children [
+            @text(glyph, ICON_BUTTON_TEXT_SIZE, ICON_BUTTON_TEXT)
+            Pickable::IGNORE
+        ]
     }
 }
 
 /// The standard 16x16 red "x" used to remove a list row. Emits `Activate`.
 pub fn delete_button() -> impl Scene {
     bsn! {
-        icon_button("x", 16.0)
-        template_value(InteractionPalette {
-            none: DELETE_BUTTON_BG,
-            hovered: DELETE_BUTTON_HOVERED,
-            pressed: DELETE_BUTTON_PRESSED,
-        })
+        @icon_button("x", 16.0)
+        InteractionPalette {
+            none: {DELETE_BUTTON_BG},
+            hovered: {DELETE_BUTTON_HOVERED},
+            pressed: {DELETE_BUTTON_PRESSED},
+        }
     }
 }
 

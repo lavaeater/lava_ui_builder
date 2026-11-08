@@ -2,9 +2,9 @@ use crate::{
     ButtonBuilder, ButtonVariant, CollapseToggleButton, Collapsible, CollapsibleContent,
     CollapsibleTogglePosition, InteractionPalette, LavaTheme, TextStyle, UIBuilder,
 };
-use bevy::ecs::event::EntityEvent;
+use bevy::ecs::observer::IntoEntityObserver;
 use bevy::ecs::system::IntoObserverSystem;
-use bevy::feathers::cursor::EntityCursor;
+use bevy::picking::cursor::EntityCursor;
 use bevy::feathers::font_styles::InheritableFont;
 use bevy::input_focus::tab_navigation::TabIndex;
 use bevy::picking::hover::Hovered;
@@ -128,10 +128,7 @@ impl<'w, 's> UIBuilder<'w, 's> {
     // ========================================================================
 
     /// Attach an entity-scoped observer to the current entity.
-    pub fn observe<E: EntityEvent, B: Bundle, M>(
-        &mut self,
-        handler: impl IntoObserverSystem<E, B, M>,
-    ) -> &mut Self {
+    pub fn observe<M>(&mut self, handler: impl IntoEntityObserver<M>) -> &mut Self {
         self.commands.entity(self.current_entity).observe(handler);
         self
     }
@@ -759,7 +756,7 @@ impl<'w, 's> UIBuilder<'w, 's> {
         &mut self,
         name: impl Into<String>,
         selected: bool,
-        handler: impl IntoObserverSystem<Activate, (), M>,
+        handler: impl IntoObserverSystem<Activate, M>,
     ) -> &mut Self {
         let bg = if selected {
             Color::srgba(0.15, 0.40, 0.20, 0.95)
@@ -796,7 +793,7 @@ impl<'w, 's> UIBuilder<'w, 's> {
         &mut self,
         glyph: impl Into<String>,
         size_px: f32,
-        handler: impl IntoObserverSystem<Activate, (), M>,
+        handler: impl IntoObserverSystem<Activate, M>,
     ) -> &mut Self {
         let glyph = glyph.into();
         self.with_child(|c| {
@@ -829,7 +826,7 @@ impl<'w, 's> UIBuilder<'w, 's> {
     /// A 16×16 red delete button ("x"). Standard for list-row removal.
     pub fn delete_button<M>(
         &mut self,
-        handler: impl IntoObserverSystem<Activate, (), M>,
+        handler: impl IntoObserverSystem<Activate, M>,
     ) -> &mut Self {
         self.with_child(|c| {
             c.size_px(16.0, 16.0)
@@ -981,7 +978,7 @@ impl<'w, 's> UIBuilder<'w, 's> {
         &mut self,
         text: impl Into<String>,
         f: F,
-        handler: impl IntoObserverSystem<Activate, (), M>,
+        handler: impl IntoObserverSystem<Activate, M>,
     ) -> &mut Self
     where
         F: FnOnce(&mut ButtonBuilder),
@@ -1023,7 +1020,7 @@ impl<'w, 's> UIBuilder<'w, 's> {
         &mut self,
         text: impl Into<String>,
         f: F,
-        handler: impl IntoObserverSystem<Activate, (), M>,
+        handler: impl IntoObserverSystem<Activate, M>,
     ) -> &mut Self
     where
         F: FnOnce(&mut ButtonBuilder),

@@ -38,7 +38,7 @@ struct Clicks(u32);
 struct ClickLabel;
 
 fn scene() -> impl SceneList {
-    bsn_list![Camera2d, root()]
+    bsn_list![Camera2d, @root()]
 }
 
 fn root() -> impl Scene {
@@ -53,37 +53,37 @@ fn root() -> impl Scene {
     // `Children [ .. ]` position an interpolated value has to be a list, so the branch
     // is wrapped in `bsn_list!` rather than being a bare scene.
     let show_hint = true;
-    let hint = show_hint.then(|| bsn_list![scenes::label("press T to switch theme")]);
+    let hint = show_hint.then(|| bsn_list![@scenes::label("press T to switch theme")]);
 
     bsn! {
         #Root
-        scenes::ui_root()
+        @scenes::ui_root()
         Children [
-            scenes::header("Lava UI Builder"),
+            @scenes::header("Lava UI Builder"),
             {hint},
             (
                 // Same widget, a different token patched over it: still theme-driven,
                 // so it follows a theme switch too.
-                scenes::label("patched to the header token")
+                @scenes::label("patched to the header token")
                 ThemedTextColor(ColorToken::HeaderText)
             ),
             (
-                scenes::button("Click me")
+                @scenes::button("Click me")
                 on(|_: On<Activate>, mut clicks: ResMut<Clicks>| clicks.0 += 1)
             ),
             (
-                scenes::label("clicks: 0")
+                @scenes::label("clicks: 0")
                 ClickLabel
             ),
             (
                 Node { flex_direction: FlexDirection::Column, row_gap: px(4) }
                 Children [ {rows} ]
             ),
-            scenes::progress_bar(0.45, 240.0, 16.0,
+            @scenes::progress_bar(0.45, 240.0, 16.0,
                 Color::srgb(0.35, 0.75, 0.45), Color::srgb(0.15, 0.15, 0.18)),
-            scenes::collapsible("Details", false, bsn_list![
-                scenes::label("hidden when collapsed"),
-                scenes::label("click the header to toggle"),
+            @scenes::collapsible("Details", false, bsn_list![
+                @scenes::label("hidden when collapsed"),
+                @scenes::label("click the header to toggle"),
             ]),
         ]
     }

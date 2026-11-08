@@ -60,7 +60,7 @@ type Item = Option<(&'static str, u32, Color)>;
 // ── Scene ─────────────────────────────────────────────────────────────────────
 
 fn scene() -> impl SceneList {
-    bsn_list![Camera2d, tooltip(), root()]
+    bsn_list![Camera2d, @tooltip(), @root()]
 }
 
 /// An absolutely-positioned overlay that follows the cursor, hidden until a hover.
@@ -74,7 +74,7 @@ fn tooltip() -> impl Scene {
         Visibility::Hidden
         Children [(
             TooltipText
-            scenes::text("", 15.0, Color::WHITE)
+            @scenes::text("", 15.0, Color::WHITE)
             Pickable::IGNORE
         )]
     }
@@ -92,10 +92,10 @@ fn root() -> impl Scene {
         .collect();
 
     bsn! {
-        scenes::ui_root()
+        @scenes::ui_root()
         Node { row_gap: {px(16.0)} }
         Children [
-            scenes::text("Inventory", 36.0, Color::WHITE),
+            @scenes::text("Inventory", 36.0, Color::WHITE),
             (
                 Node {
                     display: Display::Grid,
@@ -118,7 +118,7 @@ fn slot(col: i16, row: i16, item: Item) -> impl Scene {
     // `Option<impl Scene>` is a Scene: present only when the slot holds something.
     let marker = item.is_some().then(|| bsn! { InventoryItem });
     // `Option<impl SceneList>` for the child, because a `Children [..]` slot takes a list.
-    let icon = item.map(|(_, count, color)| bsn_list![item_icon(count, color)]);
+    let icon = item.map(|(_, count, color)| bsn_list![@item_icon(count, color)]);
 
     bsn! {
         Node {
@@ -136,10 +136,10 @@ fn slot(col: i16, row: i16, item: Item) -> impl Scene {
         GlobalZIndex
         // should_block_lower: false lets drag events reach the slot underneath
         Pickable { should_block_lower: false, is_hoverable: true }
-        {marker}
+        @{marker}
 
         // Hover -> show the tooltip with this item's name.
-        on(move |ev: On<Pointer<Over>>,
+        on(move |ev: On<PointerOver>,
                  items: Query<&InventoryItem>,
                  mut vis_q: Query<&mut Visibility, With<TooltipRoot>>,
                  mut txt_q: Query<&mut Text, With<TooltipText>>| {
@@ -152,26 +152,26 @@ fn slot(col: i16, row: i16, item: Item) -> impl Scene {
                 }
             }
         })
-        on(|_: On<Pointer<Out>>, mut vis_q: Query<&mut Visibility, With<TooltipRoot>>| {
+        on(|_: On<PointerOut>, mut vis_q: Query<&mut Visibility, With<TooltipRoot>>| {
             if let Ok(mut v) = vis_q.single_mut() {
                 *v = Visibility::Hidden;
             }
         })
 
         // Drag start -> white outline, lifted above the other slots.
-        on(|ev: On<Pointer<DragStart>>, mut q: Query<(&mut Outline, &mut GlobalZIndex)>| {
+        on(|ev: On<PointerDragStart>, mut q: Query<(&mut Outline, &mut GlobalZIndex)>| {
             if let Ok((mut outline, mut zidx)) = q.get_mut(ev.event_target()) {
                 outline.color = Color::WHITE;
                 zidx.0 = 10;
             }
         })
         // Drag -> offset the visual position; the layout slot stays reserved.
-        on(|ev: On<Pointer<Drag>>, mut q: Query<&mut UiTransform>| {
+        on(|ev: On<PointerDrag>, mut q: Query<&mut UiTransform>| {
             if let Ok(mut t) = q.get_mut(ev.event_target()) {
                 t.translation = Val2::px(ev.distance.x, ev.distance.y);
             }
         })
-        on(|ev: On<Pointer<DragEnd>>,
+        on(|ev: On<PointerDragEnd>,
             mut q: Query<(&mut UiTransform, &mut Outline, &mut GlobalZIndex)>| {
             if let Ok((mut t, mut outline, mut zidx)) = q.get_mut(ev.event_target()) {
                 t.translation = Val2::ZERO;
@@ -180,7 +180,7 @@ fn slot(col: i16, row: i16, item: Item) -> impl Scene {
             }
         })
         // Drop -> swap grid positions, so the two items exchange slots.
-        on(|ev: On<Pointer<DragDrop>>, mut q: Query<&mut Node>| {
+        on(|ev: On<PointerDragDrop>, mut q: Query<&mut Node>| {
             if let Ok([mut a, mut b]) = q.get_many_mut([ev.event_target(), ev.dropped]) {
                 core::mem::swap(&mut a.grid_row, &mut b.grid_row);
                 core::mem::swap(&mut a.grid_column, &mut b.grid_column);
@@ -209,7 +209,7 @@ fn item_icon(count: u32, color: Color) -> impl Scene {
         BackgroundColor(color)
         Pickable::IGNORE
         Children [(
-            scenes::text(count_text, 14.0, Color::WHITE)
+            @scenes::text(count_text, 14.0, Color::WHITE)
             Pickable::IGNORE
         )]
     }
