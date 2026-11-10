@@ -59,7 +59,7 @@ pub fn handle_scroll_input(
                     * computed.inverse_scale_factor())
                 .max(0.0);
                 let next = (scroll_position.y - dy).clamp(0.0, max);
-                if next != scroll_position.y {
+                if (next - scroll_position.y).abs() > f32::EPSILON {
                     scroll_position.y = next;
                     break;
                 }

@@ -415,7 +415,7 @@ fn start_next_crawl(
     let Some(spec) = queue.pending.pop_front() else {
         return;
     };
-    let theme = theme.map(|t| t.clone()).unwrap_or_default();
+    let theme = theme.map_or_default(|t| t.clone());
     let root = match spec.style {
         CrawlStyle::Scroll { .. } => spawn_scroll(&mut commands, &spec, &theme),
         CrawlStyle::Typewriter => spawn_typewriter(&mut commands, &spec, &theme),
@@ -653,7 +653,7 @@ fn draw_scroll(
     let content = (top - PARAGRAPH_GAP).max(0.0);
     active.progress.scroll_end = Some(content + exit_depth(height, tilt));
 
-    let theme = theme.map(|t| t.clone()).unwrap_or_default();
+    let theme = theme.map_or_default(|t| t.clone());
     let offset = active.progress.scroll;
     for (line, node, mut transform, mut color) in &mut lines {
         let line_top = tops.get(line.index).copied().unwrap_or(0.0);
@@ -701,7 +701,7 @@ fn draw_typewriter(
     if active.spec.style != CrawlStyle::Typewriter {
         return;
     }
-    let theme = theme.map(|t| t.clone()).unwrap_or_default();
+    let theme = theme.map_or_default(|t| t.clone());
     let (spec, progress) = (&active.spec, &active.progress);
     let fade = progress.fade();
     if let Ok(mut backdrop) = roots.get_mut(active.root) {
