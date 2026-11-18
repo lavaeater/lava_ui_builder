@@ -122,6 +122,15 @@ even though they are fixes:
   back to `Interaction`, so entities built with `bevy_ui::widget::Button` keep working.
 * **Collapsible toggles respond to ENTER/SPACE** when focused, and work regardless of how
   they were spawned.
+* **`WorldFollower` sets `PositionType::Absolute` itself.** Code that patched the
+  follower's `Node` afterwards (aliens-vs-suburbia's revive bar does, in
+  `death_revive.rs`) still works, but the patch can be deleted.
+* **New, opt-in: themed meters.** `LavaTheme.meter: MeterTheme { bg, fill, health }`,
+  tokens `ColorToken::{MeterBg, MeterFill, HealthFill}`, and
+  `scenes::meter(value, w, h, fill_token)`: a `progress_bar` whose colours follow the
+  theme. Existing `progress_bar(.., Color, Color)` calls are unchanged; switch the ones
+  whose colours are theme rather than meaning. A theme built with `..LavaTheme::default()`
+  needs no change.
 
 ---
 

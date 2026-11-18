@@ -156,6 +156,10 @@ pub fn sync_progress_bars(
 
 /// Move each UI node with [`WorldFollower`] to track its target entity's screen position.
 /// Despawns the follower if the target no longer exists.
+///
+/// The node is also made `PositionType::Absolute`: `left`/`top` only place a node that
+/// way, and requiring every caller to remember (or to patch a `Node` that a widget scene
+/// already brought) was a footgun.
 pub fn world_follower_system(
     mut followers: Query<(Entity, &WorldFollower, &mut Node)>,
     transforms: Query<&GlobalTransform>,
@@ -174,6 +178,9 @@ pub fn world_follower_system(
             commands.entity(entity).despawn();
             continue;
         };
+        if node.position_type != PositionType::Absolute {
+            node.position_type = PositionType::Absolute;
+        }
         if let Ok(pos) = camera.world_to_viewport(camera_transform, tr.translation()) {
             node.left = Val::Px(follower_axis(
                 origin.x,

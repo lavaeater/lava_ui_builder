@@ -124,3 +124,7 @@ path = "examples/dark_light_theme.rs"
 [[example]]
 name = "crawl"
 path = "examples/crawl.rs"
+
+[[example]]
+name = "health_bar"
+path = "examples/health_bar.rs"

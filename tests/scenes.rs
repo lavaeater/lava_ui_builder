@@ -157,6 +157,38 @@ fn a_progress_bar_sizes_its_fill_child_from_the_value() {
     );
 }
 
+/// A meter's two colours are tokens, so both follow a theme swap on the live entities.
+#[test]
+fn a_meter_takes_its_colours_from_the_theme_and_follows_a_swap() {
+    let mut app = test_app();
+    let entity = spawn(
+        &mut app,
+        scenes::meter(0.5, 100.0, 10.0, ColorToken::HealthFill),
+    );
+    let fill = app.world().get::<Children>(entity).expect("fill child")[0];
+    let colours = |app: &App| {
+        let bg = app.world().get::<BackgroundColor>(entity).map(|c| c.0);
+        let fill = app.world().get::<BackgroundColor>(fill).map(|c| c.0);
+        (bg, fill)
+    };
+
+    let default = LavaTheme::default().meter;
+    assert_eq!(colours(&app), (Some(default.bg), Some(default.health)));
+    assert_eq!(
+        app.world().get::<Node>(fill).map(|n| n.width),
+        Some(Val::Percent(50.0))
+    );
+
+    let (bg, health) = (Color::srgb(0.1, 0.2, 0.3), Color::srgb(0.9, 0.5, 0.1));
+    let mut theme = LavaTheme::default();
+    theme.meter.bg = bg;
+    theme.meter.health = health;
+    app.world_mut().insert_resource(theme);
+    app.update();
+
+    assert_eq!(colours(&app), (Some(bg), Some(health)));
+}
+
 #[test]
 fn a_collapsible_resolves_its_name_references_to_the_section_entity() {
     let mut app = test_app();

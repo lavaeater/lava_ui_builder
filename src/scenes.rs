@@ -44,8 +44,8 @@ use bevy::ui_widgets::Button as WidgetsButton;
 
 use crate::{
     CollapseToggleButton, Collapsible, CollapsibleContent, ColorToken, FontToken,
-    InteractionPalette, ProgressBar, ProgressBarFill, ThemedBorderColor, ThemedFont, ThemedPalette,
-    ThemedTextColor,
+    InteractionPalette, ProgressBar, ProgressBarFill, ThemedBackground, ThemedBorderColor,
+    ThemedFont, ThemedPalette, ThemedTextColor,
 };
 
 /// Default button metrics.
@@ -193,6 +193,28 @@ pub fn progress_bar(value: f32, width: f32, height: f32, fill: Color, bg: Color)
             ProgressBarFill
             Node { width: {percent(pct)}, height: percent(100) }
             BackgroundColor({fill})
+        ]
+    }
+}
+
+/// A themed horizontal meter: [`progress_bar`] with its colours taken from
+/// [`crate::MeterTheme`] instead of passed in, so a theme swap repaints it.
+///
+/// `fill` picks the token for the filled part -- usually [`ColorToken::MeterFill`] or
+/// [`ColorToken::HealthFill`], but any token works. The empty part is
+/// [`ColorToken::MeterBg`]; to change that, patch `ThemedBackground` on the meter itself.
+/// Drive it exactly like `progress_bar`, by writing `ProgressBar::value`. Its
+/// `fill_color` field is unused here: the colour lives in the token.
+pub fn meter(value: f32, width: f32, height: f32, fill: ColorToken) -> impl Scene {
+    let pct = value.clamp(0.0, 1.0) * 100.0;
+    bsn! {
+        ProgressBar { value: {value} }
+        Node { width: {px(width)}, height: {px(height)}, overflow: {Overflow::clip()} }
+        ThemedBackground(ColorToken::MeterBg)
+        Children [
+            ProgressBarFill
+            Node { width: {percent(pct)}, height: percent(100) }
+            ThemedBackground({fill})
         ]
     }
 }

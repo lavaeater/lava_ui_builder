@@ -11,14 +11,20 @@ cargo build
 # Lint (the pedantic set in [lints.clippy] is kept in sync with aliens-vs-suburbia by hand)
 cargo clippy --all-targets --all-features
 
-# Test
-cargo test
+# Test (--all-features so the serde-gated crawl code is covered too)
+cargo test --all-features
+cargo test --test scenes                 # one integration file (scenes | crawl)
+cargo test follower_axis                 # tests whose name contains the filter
+
+# Library alone, with the crate's own trimmed bevy features (see Constraints)
+cargo check --lib
 
 # Run an example (all are on the scene API except basic_layout)
 cargo run --example bsn_layout          # smallest scene example; start here
 cargo run --example dark_light_theme    # live theme switching via tokens
 cargo run --example inventory           # inline on(..) observers, drag and drop
 cargo run --example complex_example     # collapsibles, scrolling, runtime rebuild
+cargo run --example health_bar          # world-space nameplate (WorldFollower + meter), 3D
 cargo run --example basic_layout        # the OLD APIs, kept as the unmigrated reference
 ```
 
@@ -27,9 +33,30 @@ cargo run --example basic_layout        # the OLD APIs, kept as the unmigrated r
 `r` check-all-examples; `bacon ex -- <name>` runs one example by name. Keep every job on
 the same flags — a job with different ones re-fingerprints the whole bevy tree.
 
-Tests: `src/systems.rs` has unit tests for `follower_axis`; `tests/scenes.rs` has headless
-tests that spawn each BSN scene and assert the resulting entity tree. Visual behaviour is
-still validated by running the examples.
+`e` runs whichever example is hardcoded in `[jobs.example]` (currently `basic_layout`).
+
+Tests: unit tests in `src/systems.rs` (`follower_axis`) and `src/crawl.rs`
+(`CrawlProgress` timing); headless integration tests in `tests/scenes.rs` (spawn each BSN
+scene, assert the entity tree, check `#Name` references resolve) and `tests/crawl.rs`
+(drive `CrawlPlugin`). New scene tests should reuse the `test_app()` there:
+`MinimalPlugins + AssetPlugin + ScenePlugin` plus `apply_theme_tokens` — no window or
+renderer. Visual behaviour is still validated by running the examples.
+
+## Constraints
+
+- **Panicking is a lint error.** `unwrap_used`, `expect_used`, `panic`, `indexing_slicing`,
+  `string_slice`, `todo`, `unreachable` are `deny` in `[lints.clippy]`. Use `let-else`,
+  `.get()`, `Option` combinators. Test files opt out with a file-level
+  `#![allow(..., reason = "...")]`.
+- **The library's bevy is trimmed** (`default-features = false`, only `ui`, `bevy_feathers`,
+  `bevy_scene`), while `[dev-dependencies]` pulls full bevy for examples and tests. So code
+  using a bevy module outside those features compiles under `cargo test`/examples but breaks
+  `cargo check --lib` and downstream builds. Don't widen the feature list casually: the
+  Cargo.toml comment explains the Android activity conflict with the `civilization` game.
+- **Downstream consumers** pull this crate in as a `lava_ui_builder/` subdirectory (a git
+  submodule): `../aliens-vs-suburbia` (with `serde`) and `../civilization` (as a workspace
+  member). Public API changes need a
+  matching entry in `migration-guide.md`.
 
 ## Architecture
 
@@ -51,11 +78,23 @@ and callers override single fields by *patching* (`scenes::button("Play") Node {
 rather than by passing options. Widgets take **no theme argument** — colors and fonts come
 from `src/tokens.rs` (see below).
 
-Three rules when writing them:
+Rules when writing them:
+- calling a scene function inside `bsn!` needs `@`: `Children [ @scenes::label("a") -- @scenes::label("b") HealthText ]`.
+  Without `@` it fails with "`impl Scene: Template` is not satisfied"
+- Bevy 0.20 BSN separates entities with `--`; components on one entity are just listed.
+  Commas and `( .. )` around entities, and `bsn_list![..]` brackets, still compile but are
+  deprecated; most existing examples and tests still use them and produce those warnings.
+  Use the new syntax in new code
 - a `Scene` is `'static`, so it cannot borrow: copy values into locals before the `bsn!`
 - anything that is not BSN value syntax needs braces — `Text({text})`, not `Text(text.into())`
 - an optional child is `Option<impl SceneList>`: `cond.then(|| bsn_list![..])`, *not*
   `bsn!{..}`, because a `Children [..]` slot interpolates a list
+- `on(..)` observers must be `Clone`: capture `Copy` data or clone into the closure
+
+Runtime rebuilds (e.g. a list whose contents change) go through
+`scenes::replace_children(commands, parent, bsn_list![..])`. The new children spawn in the
+`SpawnScene` schedule, after `Update`, so the system doing the rebuild cannot query them in
+the same run.
 
 ### Theme tokens (`src/tokens.rs`)
 `ColorToken` / `FontToken` are enums naming the fields of `LavaTheme`. Widgets carry
@@ -64,6 +103,14 @@ Three rules when writing them:
 (guarded by equality checks). Swapping the `LavaTheme` resource repaints live UI — no
 rebuild. Patching a bare `TextColor` over a themed widget will **not** stick; patch the
 token instead. Sizes are not tokens: patch `Node`.
+
+**Every new widget must be themed.** A new colour role means a `LavaTheme` field (grouped
+in a sub-struct like `MeterTheme`, with a `Default`) plus a `ColorToken` variant resolved in
+`ColorToken::color` — not a `Color` parameter. Downstream themes are built with
+`..LavaTheme::default()`, so adding fields is non-breaking. Also check `bevy::ui_widgets` /
+`bevy::feathers` for an existing widget before hand-rolling one: 0.20 ships slider, select,
+menu, text input, checkbox, radio, scroll area, tabs and dialog; no progress bar or meter
+yet, which is why `meter` exists here.
 
 ### Bundle-function API (`src/lib.rs`)
 Free functions (`ui_root`, `header`, `label`, `themed_button`, etc.) that return

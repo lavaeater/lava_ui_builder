@@ -1,5 +1,13 @@
 # Challenges
 
+Source: [10 Challenges for Bevy UI Frameworks — bevyengine/bevy#11100](https://github.com/bevyengine/bevy/discussions/11100)
+(TimJentzsch, December 2023). Implementations by other frameworks are linked in the
+thread's comments, e.g. [haalka](https://github.com/databasedav/haalka/tree/main/examples)
+(challenges 1, 2, 4).
+
+Examples here: 1 `game_menu`, 2 `inventory`, 3 `health_bar`, 6 `hud`, 8 `scoreboard`,
+9 `dark_light_theme`. Not started: 4, 5, 7.
+
 ## 1. Game Menu
 
 ![Game menu example (Factorio)](https://github.com/bevyengine/bevy/assets/13908946/02d905ef-46ee-43a7-9e84-a31045c83ba8)

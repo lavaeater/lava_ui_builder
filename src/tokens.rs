@@ -33,6 +33,9 @@ pub enum ColorToken {
     CollapsibleBgPressed,
     HeaderText,
     LabelText,
+    MeterBg,
+    MeterFill,
+    HealthFill,
     PanelBg,
     PanelBorder,
 }
@@ -51,6 +54,9 @@ impl ColorToken {
             Self::CollapsibleBgPressed => theme.button.collapsible_bg_pressed,
             Self::HeaderText => theme.text.header_color,
             Self::LabelText => theme.text.label_color,
+            Self::MeterBg => theme.meter.bg,
+            Self::MeterFill => theme.meter.fill,
+            Self::HealthFill => theme.meter.health,
             Self::PanelBg => theme.bg_color,
             Self::PanelBorder => theme.border_color,
         }

@@ -152,12 +152,36 @@ impl Default for TextTheme {
     }
 }
 
+/// Theme-level colors for meters: progress bars, health bars, charge gauges.
+///
+/// `fill` is the general-purpose fill; `health` exists because a health bar is the one
+/// meter nearly every game has, and it usually wants its own colour regardless of what the
+/// rest of the palette does.
+#[derive(Clone, Debug)]
+pub struct MeterTheme {
+    /// The empty part of the bar, behind the fill.
+    pub bg: Color,
+    pub fill: Color,
+    pub health: Color,
+}
+
+impl Default for MeterTheme {
+    fn default() -> Self {
+        Self {
+            bg: Color::srgba(0.0, 0.0, 0.0, 0.55),
+            fill: Color::srgb(0.275, 0.600, 0.900),
+            health: Color::srgb(0.200, 0.800, 0.300),
+        }
+    }
+}
+
 /// Top-level UI theme resource. Insert this as a `Resource` to configure the look of
 /// bundle-function widgets and the imperative `UIBuilder`.
 #[derive(Resource, Clone, Debug)]
 pub struct LavaTheme {
     pub button: ButtonTheme,
     pub text: TextTheme,
+    pub meter: MeterTheme,
     pub bg_color: Color,
     pub border_color: Color,
     pub ui_width: f32,
@@ -169,6 +193,7 @@ impl Default for LavaTheme {
         Self {
             button: ButtonTheme::default(),
             text: TextTheme::default(),
+            meter: MeterTheme::default(),
             bg_color: Color::srgba(0.5, 0.5, 0.5, 0.9),
             border_color: Color::srgba(0.2, 0.2, 0.2, 0.9),
             ui_width: 1920.0,
@@ -477,8 +502,10 @@ pub struct ProgressBarFill;
 // WorldFollower — UI node that tracks a world-space entity's screen position
 // ============================================================================
 
-/// Attach to an absolutely-positioned UI node to make it follow `target` in screen space.
-/// `offset` is applied in pixels relative to the projected position.
+/// Attach to a UI node to make it follow `target` in screen space. The follower system
+/// makes the node `PositionType::Absolute` itself. `offset` is applied in UI pixels
+/// relative to the projected position, so `-width / 2` centres a node over its target.
+/// The follower despawns when its target does.
 #[derive(Component, Debug, FromTemplate)]
 pub struct WorldFollower {
     pub target: Entity,
