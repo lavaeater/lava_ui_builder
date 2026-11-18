@@ -28,7 +28,8 @@ cargo run --example health_bar          # world-space nameplate (WorldFollower +
 cargo run --example basic_layout        # the OLD APIs, kept as the unmigrated reference
 ```
 
-`bacon.toml` wraps all of the above as jobs on nightly with cranelift + sccache:
+`bacon.toml` wraps all of the above as jobs (nightly comes from `../rust-toolchain.toml`;
+caching is kache, set up in `~/.cargo/config.toml`):
 `bacon` (clippy-all by default), or press `y` clippy, `t` test, `e` example,
 `r` check-all-examples; `bacon ex -- <name>` runs one example by name. Keep every job on
 the same flags — a job with different ones re-fingerprints the whole bevy tree.

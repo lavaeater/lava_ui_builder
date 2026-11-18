@@ -2,51 +2,20 @@
 #
 # bacon config for lava_ui_builder.
 #
-# Mirrors the aliens-vs-suburbia setup: every job runs on nightly with the same
-# fast-compile settings, so they all share one target dir and one sccache namespace:
-#
-#   * cranelift as the dev-profile codegen backend
-#     (CARGO_PROFILE_DEV_CODEGEN_BACKEND + `-Z codegen-backend`; release keeps LLVM)
-#   * sccache in front of rustc (RUSTC_WRAPPER)
-#   * the parallel rustc frontend (`-Z threads=8`; rustc recommends 8 as the sweet spot)
-#   * `--timings` on every job: a report lands in target/cargo-timings/ each run
-#   * `-Zhint-mostly-unused` for dependencies only, via the cargo profile key
-#     `hint-mostly-unused` (`-Z profile-hint-mostly-unused` + `--config`), which is
-#     where it pays off: bevy is huge and we touch a sliver of it. Applying it to
-#     our own crate would only make it slower to compile.
-#
-# Note: the examples pull in bevy with default features (dev-dependencies), so the
-# first `--all-targets` or example build is a long one. After that sccache carries it.
-#
-# Prerequisites:
-#   rustup toolchain install nightly
-#   rustup component add rustc-codegen-cranelift-preview --toolchain nightly
-#   cargo install sccache cargo-nextest
-#
-# Keys:  c check   y clippy   a clippy-all (default)   f fix   d doc   o doc-open
-#        t test    n nextest  e example   r run-example
-#
-# `check` chains into `clippy` on success (on_success = "job:clippy"): press `c`
-# for the fast pass, and if it is clean bacon moves on to the slower lint pass
-# by itself. Press `c` again to go back to plain check.
-#
-# Complete help on configuration: https://dystroy.org/bacon/config/
 
 default_job = "clippy-all"
 
 # Environment shared by every job.
 [env]
 CARGO_TERM_COLOR = "always"
-RUSTC_WRAPPER = "sccache"
-CARGO_PROFILE_DEV_CODEGEN_BACKEND = "cranelift"
 RUSTFLAGS = "-Z threads=8"
 
 # --- static analysis -----------------------------------------------------------
 
 [jobs.check]
 command = [
-    "cargo", "+nightly", "check",
-    "-Z", "codegen-backend", "-Z", "profile-hint-mostly-unused", "--timings",
+    "cargo", "check",
+    "-Z", "profile-hint-mostly-unused", "--timings",
     "--config", 'profile.dev.package."*".hint-mostly-unused=true',
     "--all-targets",
 ]
@@ -56,8 +25,8 @@ on_success = "job:clippy"
 # Library only, default features: the fast lint pass while working in src/.
 [jobs.clippy]
 command = [
-    "cargo", "+nightly", "clippy",
-    "-Z", "codegen-backend", "-Z", "profile-hint-mostly-unused", "--timings",
+    "cargo", "clippy",
+    "-Z", "profile-hint-mostly-unused", "--timings",
     "--config", 'profile.dev.package."*".hint-mostly-unused=true',
     "--lib",
 ]
@@ -67,8 +36,8 @@ need_stdout = false
 # paths are linted too. This is the default job.
 [jobs.clippy-all]
 command = [
-    "cargo", "+nightly", "clippy",
-    "-Z", "codegen-backend", "-Z", "profile-hint-mostly-unused", "--timings",
+    "cargo", "clippy",
+    "-Z", "profile-hint-mostly-unused", "--timings",
     "--config", 'profile.dev.package."*".hint-mostly-unused=true',
     "--all-targets", "--all-features",
 ]
@@ -81,8 +50,8 @@ need_stdout = false
 # would fire on its own edits.
 [jobs.fix]
 command = [
-    "cargo", "+nightly", "clippy",
-    "-Z", "codegen-backend", "-Z", "profile-hint-mostly-unused", "--timings",
+    "cargo", "clippy",
+    "-Z", "profile-hint-mostly-unused", "--timings",
     "--config", 'profile.dev.package."*".hint-mostly-unused=true',
     "--all-targets", "--all-features",
     "--fix", "--allow-dirty", "--allow-staged",
@@ -95,8 +64,8 @@ on_failure = "job:clippy-all"
 
 [jobs.doc]
 command = [
-    "cargo", "+nightly", "doc",
-    "-Z", "codegen-backend", "-Z", "profile-hint-mostly-unused", "--timings",
+    "cargo", "doc",
+    "-Z", "profile-hint-mostly-unused", "--timings",
     "--config", 'profile.dev.package."*".hint-mostly-unused=true',
     "--no-deps",
 ]
@@ -106,8 +75,8 @@ need_stdout = false
 # previous job so we don't open a new tab on every change.
 [jobs.doc-open]
 command = [
-    "cargo", "+nightly", "doc",
-    "-Z", "codegen-backend", "-Z", "profile-hint-mostly-unused", "--timings",
+    "cargo", "doc",
+    "-Z", "profile-hint-mostly-unused", "--timings",
     "--config", 'profile.dev.package."*".hint-mostly-unused=true',
     "--no-deps", "--open",
 ]
@@ -121,8 +90,8 @@ on_success = "back" # so that we don't open the browser at each change
 # Args for the harness: bacon test -- -- --nocapture
 [jobs.test]
 command = [
-    "cargo", "+nightly", "test",
-    "-Z", "codegen-backend", "-Z", "profile-hint-mostly-unused", "--timings",
+    "cargo", "test",
+    "-Z", "profile-hint-mostly-unused", "--timings",
     "--config", 'profile.dev.package."*".hint-mostly-unused=true',
     "--all-features",
 ]
@@ -130,8 +99,8 @@ need_stdout = true
 
 [jobs.nextest]
 command = [
-    "cargo", "+nightly", "nextest", "run",
-    "-Z", "codegen-backend", "-Z", "profile-hint-mostly-unused", "--timings",
+    "cargo", "nextest", "run",
+    "-Z", "profile-hint-mostly-unused", "--timings",
     "--config", 'profile.dev.package."*".hint-mostly-unused=true',
     "--all-features",
     "--hide-progress-bar", "--failure-output", "final",
@@ -148,8 +117,8 @@ analyzer = "nextest"
 # refactor of the builder or the widget functions.
 [jobs.examples]
 command = [
-    "cargo", "+nightly", "check",
-    "-Z", "codegen-backend", "-Z", "profile-hint-mostly-unused", "--timings",
+    "cargo", "check",
+    "-Z", "profile-hint-mostly-unused", "--timings",
     "--config", 'profile.dev.package."*".hint-mostly-unused=true',
     "--examples", "--all-features",
 ]
@@ -161,8 +130,8 @@ need_stdout = false
 # Saving a file kills the window and rebuilds.
 [jobs.ex]
 command = [
-    "cargo", "+nightly", "run",
-    "-Z", "codegen-backend", "-Z", "profile-hint-mostly-unused", "--timings",
+    "cargo", "run",
+    "-Z", "profile-hint-mostly-unused", "--timings",
     "--config", 'profile.dev.package."*".hint-mostly-unused=true',
     # bacon appends the name you pass after `--`, so this stays last.
     "--example",
@@ -176,8 +145,8 @@ on_change_strategy = "kill_then_restart"
 # name here if you are working on a different one.
 [jobs.example]
 command = [
-    "cargo", "+nightly", "run",
-    "-Z", "codegen-backend", "-Z", "profile-hint-mostly-unused", "--timings",
+    "cargo", "run",
+    "-Z", "profile-hint-mostly-unused", "--timings",
     "--config", 'profile.dev.package."*".hint-mostly-unused=true',
     "--example", "basic_layout",
 ]
