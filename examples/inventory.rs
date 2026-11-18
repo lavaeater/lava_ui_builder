@@ -60,7 +60,7 @@ type Item = Option<(&'static str, u32, Color)>;
 // ── Scene ─────────────────────────────────────────────────────────────────────
 
 fn scene() -> impl SceneList {
-    bsn_list![Camera2d, @tooltip(), @root()]
+    bsn_list! { Camera2d -- @tooltip() -- @root() }
 }
 
 /// An absolutely-positioned overlay that follows the cursor, hidden until a hover.
@@ -72,11 +72,11 @@ fn tooltip() -> impl Scene {
         BorderColor::all(Color::srgb(0.6, 0.6, 0.85))
         GlobalZIndex(200)
         Visibility::Hidden
-        Children [(
+        Children [
             TooltipText
             @scenes::text("", 15.0, Color::WHITE)
             Pickable::IGNORE
-        )]
+        ]
     }
 }
 
@@ -95,19 +95,18 @@ fn root() -> impl Scene {
         @scenes::ui_root()
         Node { row_gap: {px(16.0)} }
         Children [
-            @scenes::text("Inventory", 36.0, Color::WHITE),
-            (
-                Node {
-                    display: Display::Grid,
-                    column_gap: {px(GAP)},
-                    row_gap: {px(GAP)},
-                    padding: {UiRect::all(px(12.0))},
-                }
-                BackgroundColor(Color::srgba(0.08, 0.08, 0.14, 0.96))
-                BorderColor::all(Color::srgb(0.28, 0.28, 0.52))
-                Pickable::IGNORE
-                Children [ {slots} ]
-            ),
+            @scenes::text("Inventory", 36.0, Color::WHITE)
+            --
+            Node {
+                display: Display::Grid,
+                column_gap: {px(GAP)},
+                row_gap: {px(GAP)},
+                padding: {UiRect::all(px(12.0))},
+            }
+            BackgroundColor(Color::srgba(0.08, 0.08, 0.14, 0.96))
+            BorderColor::all(Color::srgb(0.28, 0.28, 0.52))
+            Pickable::IGNORE
+            Children [ {slots} ]
         ]
     }
 }
@@ -116,9 +115,9 @@ fn root() -> impl Scene {
 fn slot(col: i16, row: i16, item: Item) -> impl Scene {
     let item_name = item.map(|(n, _, _)| n);
     // `Option<impl Scene>` is a Scene: present only when the slot holds something.
-    let marker = item.is_some().then(|| bsn! { InventoryItem });
+    let marker = item.is_some().then_some(bsn! { InventoryItem });
     // `Option<impl SceneList>` for the child, because a `Children [..]` slot takes a list.
-    let icon = item.map(|(_, count, color)| bsn_list![@item_icon(count, color)]);
+    let icon = item.map(|(_, count, color)| bsn_list! { @item_icon(count, color) });
 
     bsn! {
         Node {
@@ -208,10 +207,10 @@ fn item_icon(count: u32, color: Color) -> impl Scene {
         }
         BackgroundColor(color)
         Pickable::IGNORE
-        Children [(
+        Children [
             @scenes::text(count_text, 14.0, Color::WHITE)
             Pickable::IGNORE
-        )]
+        ]
     }
 }
 

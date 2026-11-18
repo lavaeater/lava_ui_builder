@@ -94,21 +94,21 @@ fn setup_ui(mut commands: Commands, players: Query<&PlayerStats>) {
     commands.spawn_scene(bsn! {
         @scenes::ui_root()
         Children [
-            @scenes::text("SCOREBOARD", 40.0, Color::WHITE),
-            (
-                @scenes::column(4.0)
-                Node {
-                    padding: {UiRect::all(px(16.0))},
-                    border: {UiRect::all(px(2.0))},
-                    border_radius: {BorderRadius::all(px(10.0))},
-                }
-                BackgroundColor({Color::srgba(0.05, 0.05, 0.12, 0.96)})
-                BorderColor::all(Color::srgb(0.3, 0.3, 0.55))
-                Children [
-                    @header_row(),
-                    {rows},
-                ]
-            ),
+            @scenes::text("SCOREBOARD", 40.0, Color::WHITE)
+            --
+            @scenes::column(4.0)
+            Node {
+                padding: {UiRect::all(px(16.0))},
+                border: {UiRect::all(px(2.0))},
+                border_radius: {BorderRadius::all(px(10.0))},
+            }
+            BackgroundColor({Color::srgba(0.05, 0.05, 0.12, 0.96)})
+            BorderColor::all(Color::srgb(0.3, 0.3, 0.55))
+            Children [
+                @header_row()
+                --
+                {rows}
+            ]
         ]
     });
 }
@@ -149,8 +149,9 @@ fn header_row() -> impl Scene {
     bsn! {
         @table_row(Color::srgb(0.18, 0.18, 0.32))
         Children [
-            @dot(None),
-            {cells},
+            @dot(None)
+            --
+            {cells}
         ]
     }
 }
@@ -172,8 +173,9 @@ fn player_row(index: usize, stats: &PlayerStats) -> impl Scene {
     bsn! {
         @table_row(bg)
         Children [
-            @dot(Some(stats.team.color())),
-            {cells},
+            @dot(Some(stats.team.color()))
+            --
+            {cells}
         ]
     }
 }

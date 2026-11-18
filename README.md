@@ -1,6 +1,6 @@
 # Lava UI Builder
 
-Code-based UI for Bevy 0.19, with reasonable defaults and a theme you can swap at runtime.
+Code-based UI for Bevy 0.20, with reasonable defaults and a theme you can swap at runtime.
 
 It should be EASY to create a simple menu to start the game, make a choice in a game or
 display some game info.
@@ -24,25 +24,25 @@ fn main() {
 }
 
 fn menu() -> impl SceneList {
-    bsn_list![Camera2d, (
-        scenes::ui_root()
+    bsn_list! {
+        Camera2d
+        --
+        @scenes::ui_root()
         Children [
-            scenes::header("My Game"),
-            (
-                scenes::button("Play")
-                // the action lives next to the button
-                on(|_: On<Activate>| info!("play!"))
-            ),
-            (
-                // same widget, one field overridden -- this is patching
-                scenes::button("Quit")
-                Node { width: px(260) }
-                on(|_: On<Activate>, mut exit: MessageWriter<AppExit>| {
-                    exit.write(AppExit::Success);
-                })
-            ),
+            @scenes::header("My Game")
+            --
+            @scenes::button("Play")
+            // the action lives next to the button
+            on(|_: On<Activate>| info!("play!"))
+            --
+            // same widget, one field overridden -- this is patching
+            @scenes::button("Quit")
+            Node { width: px(260) }
+            on(|_: On<Activate>, mut exit: MessageWriter<AppExit>| {
+                exit.write(AppExit::Success);
+            })
         ]
-    )]
+    }
 }
 ```
 
@@ -62,7 +62,7 @@ Three things to know:
   `InteractionPalette` — swap the palette instead.
 * **`on(..)` needs a `Clone` observer system**, so capture `Copy` data (or clone into the
   closure) rather than moving a `String` in.
-* **An optional child is `Option<impl SceneList>`**: `cond.then(|| bsn_list![..])`.
+* **An optional child is `Option<impl SceneList>`**: `cond.then(|| bsn_list! {..})`.
 
 Start from `examples/bsn_layout.rs`. `examples/basic_layout.rs` is deliberately left on
 the older bundle-function and `UIBuilder` APIs, which are still supported; see

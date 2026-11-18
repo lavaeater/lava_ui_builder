@@ -74,7 +74,7 @@ when the colour is content rather than theme.
 ### Scene API (`src/scenes.rs`) — preferred
 Free functions (`ui_root`, `header`, `label`, `button`, `progress_bar`, `collapsible`)
 that return `impl Scene`, built with the `bsn!` macro. They compose inside `Children [..]`
-and callers override single fields by *patching* (`scenes::button("Play") Node { width: px(220) }`)
+and callers override single fields by *patching* (`@scenes::button("Play") Node { width: px(220) }`)
 rather than by passing options. Widgets take **no theme argument** — colors and fonts come
 from `src/tokens.rs` (see below).
 
@@ -82,17 +82,17 @@ Rules when writing them:
 - calling a scene function inside `bsn!` needs `@`: `Children [ @scenes::label("a") -- @scenes::label("b") HealthText ]`.
   Without `@` it fails with "`impl Scene: Template` is not satisfied"
 - Bevy 0.20 BSN separates entities with `--`; components on one entity are just listed.
-  Commas and `( .. )` around entities, and `bsn_list![..]` brackets, still compile but are
-  deprecated; most existing examples and tests still use them and produce those warnings.
-  Use the new syntax in new code
+  Commas between entities, `( .. )` around them, and `bsn_list![..]` / `bsn_list!(..)`
+  (instead of `bsn_list! {..}`) still compile but emit deprecation warnings. The tree is
+  clean of them; keep it that way
 - a `Scene` is `'static`, so it cannot borrow: copy values into locals before the `bsn!`
 - anything that is not BSN value syntax needs braces — `Text({text})`, not `Text(text.into())`
-- an optional child is `Option<impl SceneList>`: `cond.then(|| bsn_list![..])`, *not*
+- an optional child is `Option<impl SceneList>`: `cond.then(|| bsn_list! {..})`, *not*
   `bsn!{..}`, because a `Children [..]` slot interpolates a list
 - `on(..)` observers must be `Clone`: capture `Copy` data or clone into the closure
 
 Runtime rebuilds (e.g. a list whose contents change) go through
-`scenes::replace_children(commands, parent, bsn_list![..])`. The new children spawn in the
+`scenes::replace_children(commands, parent, bsn_list! {..})`. The new children spawn in the
 `SpawnScene` schedule, after `Update`, so the system doing the rebuild cannot query them in
 the same run.
 

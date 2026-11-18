@@ -5,15 +5,15 @@
 //!
 //! ```ignore
 //! commands.spawn_scene(bsn! {
-//!     scenes::ui_root()
+//!     @scenes::ui_root()
 //!     Children [
-//!         scenes::header("Main Menu"),
+//!         @scenes::header("Main Menu")
+//!         --
 //!         // same widget, one field overridden
-//!         scenes::label("subtitle") TextColor(Color::WHITE),
-//!         (
-//!             scenes::button("Play")
-//!             on(|_: On<Activate>| info!("play"))
-//!         ),
+//!         @scenes::label("subtitle") ThemedTextColor(ColorToken::HeaderText)
+//!         --
+//!         @scenes::button("Play")
+//!         on(|_: On<Activate>| info!("play"))
 //!     ]
 //! });
 //! ```
@@ -500,10 +500,11 @@ pub fn delete_button() -> impl Scene {
 /// `Entity`, a `WorldFollower` target) keeps working, and only the contents are rebuilt.
 ///
 /// ```ignore
-/// scenes::replace_children(&mut commands, list_root, bsn_list![
-///     scenes::list_item("one", false),
-///     scenes::list_item("two", true),
-/// ]);
+/// scenes::replace_children(&mut commands, list_root, bsn_list! {
+///     @scenes::list_item("one", false)
+///     --
+///     @scenes::list_item("two", true)
+/// });
 /// ```
 ///
 /// The new children are spawned in the `SpawnScene` schedule, i.e. after `Update` in the

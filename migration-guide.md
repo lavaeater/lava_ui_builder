@@ -155,17 +155,18 @@ ui.with_child(|c| {
     c.apply_scene(scenes::button("Play"));      // patch a scene onto this entity
 });
 ui.scene_child(scenes::label("hello"));          // spawn a scene as a child
-ui.scene_children(bsn_list![ /* … */ ]);         // … or a whole list
+ui.scene_children(bsn_list! { /* … */ });         // … or a whole list
 ```
 
 And a scene tree can be rebuilt in place, replacing
 `UIBuilder::start_from_entity(.., clear_children: true)`:
 
 ```rust
-scenes::replace_children(&mut commands, list_root, bsn_list![
-    scenes::list_item("one", false),
-    scenes::list_item("two", true),
-]);
+scenes::replace_children(&mut commands, list_root, bsn_list! {
+    @scenes::list_item("one", false)
+    --
+    @scenes::list_item("two", true)
+});
 ```
 
 The parent entity survives, so stored `Entity` ids, marker queries and `ScrollPosition` all
@@ -177,17 +178,17 @@ the same frame), so a system cannot rebuild a list and query the result in the s
 | Imperative / bundle | Scene |
 | --- | --- |
 | `UIBuilder::new(commands, theme)` + `set_node` | `commands.spawn_scene(bsn! { … })` |
-| `.with_child(\|c\| { … })` nesting | `Children [ ( … ) ]` |
+| `.with_child(\|c\| { … })` nesting | `Children [ … -- … ]` (`--` between entities) |
 | `.foreach_child(items, …)` | `Children [ {items.map(…).collect::<Vec<_>>()} ]` |
-| `if cond { ui.with_child(…) }` | `Children [ {cond.then(\|\| bsn_list![…])} ]` |
-| `.add_button_observe(text, cfg, handler)` | `scenes::button(text) on(handler)` |
+| `if cond { ui.with_child(…) }` | `Children [ {cond.then(\|\| bsn_list! {…})} ]` |
+| `.add_button_observe(text, cfg, handler)` | `@scenes::button(text) on(handler)` |
 | `ButtonBuilder::size_px(w, h)` | `Node { width: px(w), height: px(h) }` patch |
 | `.with_text(t, Some(TextStyle::size_color(s, c)))` | `scenes::text(t, s, c)` |
 | themed label/header | `scenes::label(t)` / `scenes::header(t)` (no theme argument) |
 | `.add_row(…)` / `.add_column(…)` | `scenes::row(gap)` / `scenes::column(gap)` + `Children` |
 | `.scrollable_list(…)` | `scenes::scrollable_list(gap)` |
 | `.list_item(name, selected, h)` | `scenes::list_item(name, selected) on(h)` |
-| `.with_collapsible(label, collapsed, …)` | `scenes::collapsible(label, collapsed, bsn_list![…])` |
+| `.with_collapsible(label, collapsed, …)` | `scenes::collapsible(label, collapsed, bsn_list! {…})` |
 | `progress_bar(v, w, h, fill, bg)` bundle | `scenes::progress_bar(v, w, h, fill, bg)` |
 | a startup system building UI from queries | same system, ending in `commands.spawn_scene(…)` |
 | a UI with no world data | `fn ui() -> impl Scene` + `.add_systems(Startup, ui.spawn())` |
@@ -217,7 +218,7 @@ scenes::text("danger", 16.0, Color::RED)                          // works — u
    `Clone`-friendly in practice; capture `&'static str` or `Copy` data, or build the
    closure in a factory function (`fn press(what: &'static str) -> impl Fn(..) + Clone`).
 2. **An optional child is `Option<impl SceneList>`, not `Option<impl Scene>`.** A
-   `Children [..]` slot interpolates a *list*: `cond.then(|| bsn_list![..])`. Getting this
+   `Children [..]` slot interpolates a *list*: `cond.then(|| bsn_list! {..})`. Getting this
    wrong produces a confusing `SceneList is not implemented for impl Scene` error.
 3. **Components used in `bsn!` need `Default + Clone`**, or `#[derive(FromTemplate)]` when
    they hold an `Entity` or an asset handle. Marker components need

@@ -100,7 +100,7 @@ const QUALITY_UNSELECTED: InteractionPalette = InteractionPalette {
 // ── UI ────────────────────────────────────────────────────────────────────────
 
 fn scene() -> impl SceneList {
-    bsn_list![Camera2d, @root()]
+    bsn_list! { Camera2d -- @root() }
 }
 
 fn root() -> impl Scene {
@@ -113,9 +113,11 @@ fn root() -> impl Scene {
             justify_content: JustifyContent::Center,
         }
         Children [
-            (@main_panel() MainPanel),
-            (@audio_panel() AudioPanel Node { display: Display::None }),
-            (@graphics_panel() GraphicsPanel Node { display: Display::None }),
+            @main_panel() MainPanel
+            --
+            @audio_panel() AudioPanel Node { display: Display::None }
+            --
+            @graphics_panel() GraphicsPanel Node { display: Display::None }
         ]
     }
 }
@@ -148,33 +150,30 @@ fn main_panel() -> impl Scene {
     bsn! {
         @panel_shell()
         Children [
-            @scenes::text("MY GAME", 52.0, Color::WHITE),
-            @scenes::text("Main Menu", 18.0, Color::srgb(0.7, 0.7, 0.9)),
-            (
-                @menu_button("Play", 260.0, 56.0)
-                on(|_: On<Activate>| info!("Play!"))
-            ),
-            (
-                @menu_button("Audio", 260.0, 56.0)
-                on(|_: On<Activate>, mut s: ResMut<MenuScreen>| *s = MenuScreen::Audio)
-            ),
-            (
-                @menu_button("Graphics", 260.0, 56.0)
-                on(|_: On<Activate>, mut s: ResMut<MenuScreen>| *s = MenuScreen::Graphics)
-            ),
-            (
-                @scenes::button_colored(
-                    "Quit",
-                    Color::srgb(0.50, 0.10, 0.10),
-                    Color::srgb(0.62, 0.14, 0.14),
-                    Color::srgb(0.38, 0.08, 0.08),
-                )
-                Node { width: {px(260.0)}, height: {px(56.0)} }
-                on(|_: On<Activate>, mut exit: MessageWriter<AppExit>| {
-                    // Let bevy wind down cleanly instead of `process::exit`.
-                    exit.write(AppExit::Success);
-                })
-            ),
+            @scenes::text("MY GAME", 52.0, Color::WHITE)
+            --
+            @scenes::text("Main Menu", 18.0, Color::srgb(0.7, 0.7, 0.9))
+            --
+            @menu_button("Play", 260.0, 56.0)
+            on(|_: On<Activate>| info!("Play!"))
+            --
+            @menu_button("Audio", 260.0, 56.0)
+            on(|_: On<Activate>, mut s: ResMut<MenuScreen>| *s = MenuScreen::Audio)
+            --
+            @menu_button("Graphics", 260.0, 56.0)
+            on(|_: On<Activate>, mut s: ResMut<MenuScreen>| *s = MenuScreen::Graphics)
+            --
+            @scenes::button_colored(
+                "Quit",
+                Color::srgb(0.50, 0.10, 0.10),
+                Color::srgb(0.62, 0.14, 0.14),
+                Color::srgb(0.38, 0.08, 0.08),
+            )
+            Node { width: {px(260.0)}, height: {px(56.0)} }
+            on(|_: On<Activate>, mut exit: MessageWriter<AppExit>| {
+                // Let bevy wind down cleanly instead of `process::exit`.
+                exit.write(AppExit::Success);
+            })
         ]
     }
 }
@@ -183,39 +182,35 @@ fn audio_panel() -> impl Scene {
     bsn! {
         @panel_shell()
         Children [
-            @scenes::text("Audio Settings", 32.0, Color::WHITE),
-            (
-                @scenes::row(12.0)
-                Node { align_items: AlignItems::Center }
-                Children [
-                    @scenes::text("Volume", 20.0, Color::srgb(0.8, 0.8, 0.8)),
-                    (
-                        @menu_button("-", 40.0, 40.0)
-                        on(|_: On<Activate>, mut s: ResMut<AudioSettings>| {
-                            s.volume = s.volume.saturating_sub(1).max(0);
-                        })
-                    ),
-                    (
-                        @scenes::text("7", 22.0, Color::WHITE)
-                        Node { width: {px(36.0)} }
-                        VolumeText
-                    ),
-                    (
-                        @menu_button("+", 40.0, 40.0)
-                        on(|_: On<Activate>, mut s: ResMut<AudioSettings>| {
-                            s.volume = s.volume.saturating_add(1).min(10);
-                        })
-                    ),
-                ]
-            ),
-            (
-                @menu_button("Toggle Mute", 220.0, 48.0)
+            @scenes::text("Audio Settings", 32.0, Color::WHITE)
+            --
+            @scenes::row(12.0)
+            Node { align_items: AlignItems::Center }
+            Children [
+                @scenes::text("Volume", 20.0, Color::srgb(0.8, 0.8, 0.8))
+                --
+                @menu_button("-", 40.0, 40.0)
                 on(|_: On<Activate>, mut s: ResMut<AudioSettings>| {
-                    s.muted = !s.muted;
-                    info!("Muted: {}", s.muted);
+                    s.volume = s.volume.saturating_sub(1).max(0);
                 })
-            ),
-            @back_button(),
+                --
+                @scenes::text("7", 22.0, Color::WHITE)
+                Node { width: {px(36.0)} }
+                VolumeText
+                --
+                @menu_button("+", 40.0, 40.0)
+                on(|_: On<Activate>, mut s: ResMut<AudioSettings>| {
+                    s.volume = s.volume.saturating_add(1).min(10);
+                })
+            ]
+            --
+            @menu_button("Toggle Mute", 220.0, 48.0)
+            on(|_: On<Activate>, mut s: ResMut<AudioSettings>| {
+                s.muted = !s.muted;
+                info!("Muted: {}", s.muted);
+            })
+            --
+            @back_button()
         ]
     }
 }
@@ -245,13 +240,14 @@ fn graphics_panel() -> impl Scene {
     bsn! {
         @panel_shell()
         Children [
-            @scenes::text("Graphics Settings", 32.0, Color::WHITE),
-            @scenes::text("Quality", 18.0, Color::srgb(0.7, 0.7, 0.9)),
-            (
-                @scenes::row(8.0)
-                Children [ {choices} ]
-            ),
-            @back_button(),
+            @scenes::text("Graphics Settings", 32.0, Color::WHITE)
+            --
+            @scenes::text("Quality", 18.0, Color::srgb(0.7, 0.7, 0.9))
+            --
+            @scenes::row(8.0)
+            Children [ {choices} ]
+            --
+            @back_button()
         ]
     }
 }

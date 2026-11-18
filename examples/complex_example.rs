@@ -198,8 +198,7 @@ fn setup_trade_ui(
     let human_cards: Vec<CardStack> = players
         .iter()
         .find(|(_, player, _)| player.is_human)
-        .map(|(_, _, cards)| cards.stacks.clone())
-        .unwrap_or_default();
+        .map_or_default(|(_, _, cards)| cards.stacks.clone());
 
     let roster: Vec<(String, Faction, bool)> = players
         .iter()
@@ -218,8 +217,9 @@ fn setup_trade_ui(
             column_gap: {px(8.0)},
         }
         Children [
-            @trade_card_panel(&human_cards),
-            @game_info_panel(&roster, &activity),
+            @trade_card_panel(&human_cards)
+            --
+            @game_info_panel(&roster, &activity)
         ]
     });
 }
@@ -244,13 +244,13 @@ fn trade_card_panel(stacks: &[CardStack]) -> impl Scene {
     scenes::collapsible(
         "Trade Cards",
         false,
-        bsn_list![(
+        bsn_list! {
             TradeCardList
             @scenes::scrollable_list_bounded(0.0, 500.0)
             Node { width: {px(340.0)}, padding: {UiRect::all(px(4.0))} }
             BackgroundColor(PANEL_BG)
             Children [ {rows} ]
-        )],
+        },
     )
 }
 
@@ -266,8 +266,9 @@ fn trade_card_row(pile_value: usize, stacks: &[&CardStack]) -> impl Scene {
             flex_shrink: 0.0,
         }
         Children [
-            @scenes::text(format!("{pile_value}:"), 20.0, Color::WHITE),
-            {cards},
+            @scenes::text(format!("{pile_value}:"), 20.0, Color::WHITE)
+            --
+            {cards}
         ]
     }
 }
@@ -294,8 +295,9 @@ fn trade_card(stack: &CardStack) -> impl Scene {
         }
         BackgroundColor(Color::srgba(0.2, 0.2, 0.3, 0.8))
         Children [
-            @scenes::text(name, 16.0, Color::WHITE),
-            @scenes::text(subtitle, 12.0, Color::srgb(0.8, 0.8, 0.8)),
+            @scenes::text(name, 16.0, Color::WHITE)
+            --
+            @scenes::text(subtitle, 12.0, Color::srgb(0.8, 0.8, 0.8))
         ]
     }
 }
@@ -320,37 +322,40 @@ fn game_info_panel(roster: &[(String, Faction, bool)], activity: &str) -> impl S
     scenes::collapsible(
         "Game Info",
         false,
-        bsn_list![(
+        bsn_list! {
             @scenes::column(0.0)
             Node { width: {px(500.0)}, padding: {UiRect::all(px(4.0))} }
             BackgroundColor(PANEL_BG)
             Children [
-                @scenes::text("Game State", 20.0, HEADING),
-                (
-                    GameStateDisplay
-                    @scenes::column(0.0)
-                    Node {
-                        width: percent(100),
-                        padding: {UiRect::all(px(4.0))},
-                        margin: {UiRect::bottom(px(8.0))},
-                    }
-                    Children [
-                        @scenes::label("State: Playing"),
-                        @scenes::label("Activity: Trade"),
-                        @scenes::label("Round: 3"),
-                        @scenes::text("Census Order:", 16.0, HEADING),
-                        {census},
-                    ]
-                ),
-                @scenes::text("Player Activity", 20.0, HEADING),
-                (
-                    PlayerActivityListContainer
-                    @scenes::scrollable_list_bounded(0.0, 300.0)
-                    Node { padding: {UiRect::all(px(4.0))} }
-                    Children [ {activity_rows} ]
-                ),
+                @scenes::text("Game State", 20.0, HEADING)
+                --
+                GameStateDisplay
+                @scenes::column(0.0)
+                Node {
+                    width: percent(100),
+                    padding: {UiRect::all(px(4.0))},
+                    margin: {UiRect::bottom(px(8.0))},
+                }
+                Children [
+                    @scenes::label("State: Playing")
+                    --
+                    @scenes::label("Activity: Trade")
+                    --
+                    @scenes::label("Round: 3")
+                    --
+                    @scenes::text("Census Order:", 16.0, HEADING)
+                    --
+                    {census}
+                ]
+                --
+                @scenes::text("Player Activity", 20.0, HEADING)
+                --
+                PlayerActivityListContainer
+                @scenes::scrollable_list_bounded(0.0, 300.0)
+                Node { padding: {UiRect::all(px(4.0))} }
+                Children [ {activity_rows} ]
             ]
-        )],
+        },
     )
 }
 
@@ -375,17 +380,17 @@ fn activity_row(name: &str, faction: Faction, is_human: bool, activity: &str) ->
         BackgroundColor(Color::srgba(0.15, 0.15, 0.2, 0.8))
         Children [
             // Faction colour badge.
-            (
-                Node {
-                    width: {px(18.0)},
-                    height: {px(18.0)},
-                    margin: {UiRect::all(px(4.0))},
-                    border_radius: {BorderRadius::MAX},
-                }
-                BackgroundColor(color)
-            ),
-            @scenes::text(display_name, 14.0, color),
-            @scenes::text(activity, 14.0, Color::WHITE),
+            Node {
+                width: {px(18.0)},
+                height: {px(18.0)},
+                margin: {UiRect::all(px(4.0))},
+                border_radius: {BorderRadius::MAX},
+            }
+            BackgroundColor(color)
+            --
+            @scenes::text(display_name, 14.0, color)
+            --
+            @scenes::text(activity, 14.0, Color::WHITE)
         ]
     }
 }

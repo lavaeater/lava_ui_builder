@@ -85,7 +85,7 @@ struct ClickLabel;
 // ── UI, spawned once ─────────────────────────────────────────────────────────
 
 fn scene() -> impl SceneList {
-    bsn_list![Camera2d, @root()]
+    bsn_list! { Camera2d -- @root() }
 }
 
 fn root() -> impl Scene {
@@ -105,35 +105,36 @@ fn root() -> impl Scene {
         // The root's own background is a token too, so the whole window repaints.
         ThemedBackground(ColorToken::PanelBg)
         Children [
-            @scenes::header("Theme Showcase"),
-            (
-                @scenes::column(12.0)
-                Node {
-                    width: {px(420.0)},
-                    padding: {UiRect::all(px(24.0))},
-                    border: {UiRect::all(px(2.0))},
-                    border_radius: {BorderRadius::all(px(12.0))},
-                }
-                ThemedBackground(ColorToken::PanelBg)
-                ThemedBorderColor(ColorToken::PanelBorder)
-                Children [
-                    @scenes::header("Sample Panel") ThemedFont(FontToken::Label),
-                    @scenes::label("Every colour here is a token. Switching the theme\nrepaints these entities in place."),
-                    (@scenes::label("clicks: 0") ClickLabel),
-                    {options},
-                ]
-            ),
-            (
-                @scenes::button("Switch to Light")
-                Node { width: {px(240.0)}, height: {px(52.0)} }
-                ToggleLabel
-                on(|_: On<Activate>, mut mode: ResMut<ThemeMode>| {
-                    *mode = match *mode {
-                        ThemeMode::Dark => ThemeMode::Light,
-                        ThemeMode::Light => ThemeMode::Dark,
-                    };
-                })
-            ),
+            @scenes::header("Theme Showcase")
+            --
+            @scenes::column(12.0)
+            Node {
+                width: {px(420.0)},
+                padding: {UiRect::all(px(24.0))},
+                border: {UiRect::all(px(2.0))},
+                border_radius: {BorderRadius::all(px(12.0))},
+            }
+            ThemedBackground(ColorToken::PanelBg)
+            ThemedBorderColor(ColorToken::PanelBorder)
+            Children [
+                @scenes::header("Sample Panel") ThemedFont(FontToken::Label)
+                --
+                @scenes::label("Every colour here is a token. Switching the theme\nrepaints these entities in place.")
+                --
+                @scenes::label("clicks: 0") ClickLabel
+                --
+                {options}
+            ]
+            --
+            @scenes::button("Switch to Light")
+            Node { width: {px(240.0)}, height: {px(52.0)} }
+            ToggleLabel
+            on(|_: On<Activate>, mut mode: ResMut<ThemeMode>| {
+                *mode = match *mode {
+                    ThemeMode::Dark => ThemeMode::Light,
+                    ThemeMode::Light => ThemeMode::Dark,
+                };
+            })
         ]
     }
 }
