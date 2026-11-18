@@ -29,7 +29,9 @@ cargo run --example basic_layout        # the OLD APIs, kept as the unmigrated r
 ```
 
 `bacon.toml` wraps all of the above as jobs (nightly comes from `../rust-toolchain.toml`;
-caching is kache, set up in `~/.cargo/config.toml`):
+caching is kache, set up in `~/.cargo/config.toml`; compiler flags such as `-Z threads`
+and `hint-mostly-unused` live in `../.cargo/config.toml`, never in bacon or the shell env,
+so every cargo invocation shares one cache):
 `bacon` (clippy-all by default), or press `y` clippy, `t` test, `e` example,
 `r` check-all-examples; `bacon ex -- <name>` runs one example by name. Keep every job on
 the same flags — a job with different ones re-fingerprints the whole bevy tree.

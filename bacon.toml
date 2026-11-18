@@ -5,18 +5,17 @@
 
 default_job = "clippy-all"
 
-# Environment shared by every job.
+# Environment shared by every job. Compiler flags do NOT go here: they live in
+# ../.cargo/config.toml so plain cargo and rust-analyzer build identically.
 [env]
 CARGO_TERM_COLOR = "always"
-RUSTFLAGS = "-Z threads=8"
 
 # --- static analysis -----------------------------------------------------------
 
 [jobs.check]
 command = [
     "cargo", "check",
-    "-Z", "profile-hint-mostly-unused", "--timings",
-    "--config", 'profile.dev.package."*".hint-mostly-unused=true',
+    "--timings",
     "--all-targets",
 ]
 need_stdout = false
@@ -26,19 +25,17 @@ on_success = "job:clippy"
 [jobs.clippy]
 command = [
     "cargo", "clippy",
-    "-Z", "profile-hint-mostly-unused", "--timings",
-    "--config", 'profile.dev.package."*".hint-mostly-unused=true',
+    "--timings",
     "--lib",
 ]
 need_stdout = false
 
-# The catch-all: lib, examples and tests, with every feature on so the `feathers`
+# The catch-all: lib, examples and tests, with every feature on so the `serde`
 # paths are linted too. This is the default job.
 [jobs.clippy-all]
 command = [
     "cargo", "clippy",
-    "-Z", "profile-hint-mostly-unused", "--timings",
-    "--config", 'profile.dev.package."*".hint-mostly-unused=true',
+    "--timings",
     "--all-targets", "--all-features",
 ]
 need_stdout = false
@@ -51,8 +48,7 @@ need_stdout = false
 [jobs.fix]
 command = [
     "cargo", "clippy",
-    "-Z", "profile-hint-mostly-unused", "--timings",
-    "--config", 'profile.dev.package."*".hint-mostly-unused=true',
+    "--timings",
     "--all-targets", "--all-features",
     "--fix", "--allow-dirty", "--allow-staged",
 ]
@@ -65,8 +61,7 @@ on_failure = "job:clippy-all"
 [jobs.doc]
 command = [
     "cargo", "doc",
-    "-Z", "profile-hint-mostly-unused", "--timings",
-    "--config", 'profile.dev.package."*".hint-mostly-unused=true',
+    "--timings",
     "--no-deps",
 ]
 need_stdout = false
@@ -76,8 +71,7 @@ need_stdout = false
 [jobs.doc-open]
 command = [
     "cargo", "doc",
-    "-Z", "profile-hint-mostly-unused", "--timings",
-    "--config", 'profile.dev.package."*".hint-mostly-unused=true',
+    "--timings",
     "--no-deps", "--open",
 ]
 need_stdout = false
@@ -91,8 +85,7 @@ on_success = "back" # so that we don't open the browser at each change
 [jobs.test]
 command = [
     "cargo", "test",
-    "-Z", "profile-hint-mostly-unused", "--timings",
-    "--config", 'profile.dev.package."*".hint-mostly-unused=true',
+    "--timings",
     "--all-features",
 ]
 need_stdout = true
@@ -100,8 +93,7 @@ need_stdout = true
 [jobs.nextest]
 command = [
     "cargo", "nextest", "run",
-    "-Z", "profile-hint-mostly-unused", "--timings",
-    "--config", 'profile.dev.package."*".hint-mostly-unused=true',
+    "--timings",
     "--all-features",
     "--hide-progress-bar", "--failure-output", "final",
 ]
@@ -110,16 +102,15 @@ analyzer = "nextest"
 
 # --- examples ------------------------------------------------------------------
 #
-# This crate has no integration tests worth the name; CLAUDE.md says validation is
-# done by running the examples, so they get first-class jobs.
+# Headless tests cover the entity trees, but visual behaviour is still validated by
+# running the examples, so they get first-class jobs.
 
 # Compile-check every example without running any of them. Cheap gate after a
 # refactor of the builder or the widget functions.
 [jobs.examples]
 command = [
     "cargo", "check",
-    "-Z", "profile-hint-mostly-unused", "--timings",
-    "--config", 'profile.dev.package."*".hint-mostly-unused=true',
+    "--timings",
     "--examples", "--all-features",
 ]
 need_stdout = false
@@ -131,8 +122,7 @@ need_stdout = false
 [jobs.ex]
 command = [
     "cargo", "run",
-    "-Z", "profile-hint-mostly-unused", "--timings",
-    "--config", 'profile.dev.package."*".hint-mostly-unused=true',
+    "--timings",
     # bacon appends the name you pass after `--`, so this stays last.
     "--example",
 ]
@@ -146,8 +136,7 @@ on_change_strategy = "kill_then_restart"
 [jobs.example]
 command = [
     "cargo", "run",
-    "-Z", "profile-hint-mostly-unused", "--timings",
-    "--config", 'profile.dev.package."*".hint-mostly-unused=true',
+    "--timings",
     "--example", "basic_layout",
 ]
 need_stdout = true
