@@ -8,7 +8,7 @@
 //! - Every change in the UI changes the 3D scene: the controls are bound to the `Look`
 //!   resource, and one system rebuilds the character when `Look` changes.
 //!
-//! Run with: `cargo run --example character_editor`
+//! Run with: `cargo run --example 5_character_editor`
 
 use bevy::prelude::*;
 use lava_ui_builder::prelude::*;

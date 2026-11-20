@@ -9,7 +9,7 @@
 //! The fields write into a `Report` resource as you type; Submit checks it and answers
 //! with a toast.
 //!
-//! Run with: `cargo run --example bug_report`
+//! Run with: `cargo run --example 7_bug_report`
 
 use bevy::prelude::*;
 use lava_ui_builder::prelude::*;

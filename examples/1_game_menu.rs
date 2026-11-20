@@ -7,7 +7,7 @@
 //! - Mouse: hover and press styles. Keyboard (Tab, arrows, Enter) and controller (D-pad /
 //!   stick, A, B): a focus ring on the focused widget.
 //!
-//! Run with: `cargo run --example game_menu`
+//! Run with: `cargo run --example 1_game_menu`
 
 use bevy::prelude::*;
 use lava_ui_builder::prelude::*;

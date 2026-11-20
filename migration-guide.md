@@ -89,7 +89,7 @@ for (btn, mut palette) in &mut buttons {
 ```
 
 Where `SELECTED_PALETTE` is a `const InteractionPalette { none, hovered, pressed }`.
-`examples/game_menu.rs` in the library is a worked example of exactly this change.
+`examples/1_game_menu.rs` in the library is a worked example of exactly this change.
 
 If an entity must keep a hand-painted background, remove its `InteractionPalette`.
 
@@ -307,7 +307,7 @@ Then check by hand, because none of the above catches §1.3:
 * collapsible sections open and close, including via keyboard;
 * if the project switches themes at runtime, that it still works — and if it rebuilds the
   UI to do so, note that tokens make the rebuild unnecessary (see
-  `examples/dark_light_theme.rs` in the library).
+  `examples/9_dark_light_theme.rs` in the library).
 
 ## 5. Reference
 
@@ -335,8 +335,8 @@ FontToken::  Header | Label | Button
 ```
 
 Worked examples in the library, roughly in order of complexity: `bsn_layout` (smallest),
-`buttons` (observers, patching, `@FeathersButton`), `scoreboard` (data-driven rows),
-`game_menu` (panels, selection-as-palette), `dark_light_theme` (live theming),
-`hud` (corner anchoring, marker-driven systems), `inventory` (inline drag/drop observers),
+`buttons` (observers, patching, `@FeathersButton`), `8_scoreboard` (data-driven rows),
+`1_game_menu` (panels, selection-as-palette), `9_dark_light_theme` (live theming),
+`6_hud` (corner anchoring, marker-driven systems), `2_inventory` (inline drag/drop observers),
 `complex_example` (collapsibles, scrolling, `replace_children`). `basic_layout` is
 deliberately left on the old APIs as the unmigrated reference.

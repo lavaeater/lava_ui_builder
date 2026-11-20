@@ -108,7 +108,7 @@ Things to know:
 ### Examples
 
 The ten "UI challenges" from [bevyengine/bevy#11100](https://github.com/bevyengine/bevy/discussions/11100)
-are implemented as examples; see `challenges.md`. `cargo run --example game_menu` is a
+are implemented as examples; see `challenges.md`. `cargo run --example 1_game_menu` is a
 good start. `examples/basic_layout.rs` is deliberately left on the older bundle-function
 and `UIBuilder` APIs, which are frozen but still supported; see `bsn-migration.md` for
 how the three APIs relate, and `roadmap.md` for where the library is going.

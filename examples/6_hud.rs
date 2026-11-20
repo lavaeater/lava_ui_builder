@@ -8,7 +8,7 @@
 //! resource, so the only game-side system is the one that plays the match. Space fires,
 //! R reloads.
 //!
-//! Run with: `cargo run --example hud`
+//! Run with: `cargo run --example 6_hud`
 
 use bevy::prelude::*;
 use lava_ui_builder::prelude::*;

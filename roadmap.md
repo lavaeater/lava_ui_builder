@@ -170,7 +170,7 @@ outside a theme definition. That includes the challenges not yet started:
 | 5. Images, nine-slice, responsive | `media.rs`, `responsive.rs` | done. `image`, `icon`, `nine_slice`, `skinned_button` (the palette tints the skin); `Responsive` / `stack_below` / `full_width_below` |
 | 6. Small widgets | `overlay.rs`, `drag.rs`, `scenes/layout.rs` | done. Tooltip, toasts, `confirm`, drag and drop, `anchored`, `table`, `card`, `screen`, `backdrop` |
 | 7. Restructure | `lib.rs` → `theme` / `components` / `bundles`; `scenes/` directory; `prelude` | done. Downstream paths are unchanged |
-| 8. Challenges | `examples/` | done for 1–9 (three new: `responsive_menu`, `character_editor`, `bug_report`), 72–158 lines each, no hardcoded UI colours. Status table in `challenges.md` |
+| 8. Challenges | `examples/` | done for 1–9 (three new: `4_responsive_menu`, `5_character_editor`, `7_bug_report`), 72–158 lines each, no hardcoded UI colours. Status table in `challenges.md` |
 
 Also:
 

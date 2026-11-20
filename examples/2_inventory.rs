@@ -9,7 +9,7 @@
 //! Dragging, the tooltip and the themed panel are library pieces; what a drop *means*
 //! (here: swap the two slots' grid cells) is the one game-specific observer.
 //!
-//! Run with: `cargo run --example inventory`
+//! Run with: `cargo run --example 2_inventory`
 
 use bevy::prelude::*;
 use lava_ui_builder::prelude::*;

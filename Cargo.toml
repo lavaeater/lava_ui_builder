@@ -103,40 +103,40 @@ name = "complex_example"
 path = "examples/complex_example.rs"
 
 [[example]]
-name = "inventory"
-path = "examples/inventory.rs"
+name = "2_inventory"
+path = "examples/2_inventory.rs"
 
 [[example]]
-name = "game_menu"
-path = "examples/game_menu.rs"
+name = "1_game_menu"
+path = "examples/1_game_menu.rs"
 
 [[example]]
-name = "hud"
-path = "examples/hud.rs"
+name = "6_hud"
+path = "examples/6_hud.rs"
 
 [[example]]
-name = "scoreboard"
-path = "examples/scoreboard.rs"
+name = "8_scoreboard"
+path = "examples/8_scoreboard.rs"
 
 [[example]]
-name = "dark_light_theme"
-path = "examples/dark_light_theme.rs"
+name = "9_dark_light_theme"
+path = "examples/9_dark_light_theme.rs"
 [[example]]
 name = "crawl"
 path = "examples/crawl.rs"
 
 [[example]]
-name = "health_bar"
-path = "examples/health_bar.rs"
+name = "3_health_bar"
+path = "examples/3_health_bar.rs"
 
 [[example]]
-name = "responsive_menu"
-path = "examples/responsive_menu.rs"
+name = "4_responsive_menu"
+path = "examples/4_responsive_menu.rs"
 
 [[example]]
-name = "character_editor"
-path = "examples/character_editor.rs"
+name = "5_character_editor"
+path = "examples/5_character_editor.rs"
 
 [[example]]
-name = "bug_report"
-path = "examples/bug_report.rs"
+name = "7_bug_report"
+path = "examples/7_bug_report.rs"

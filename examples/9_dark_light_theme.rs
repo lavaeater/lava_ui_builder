@@ -5,7 +5,7 @@
 //! on screen comes from the `LavaTheme` resource through tokens, so a switch is one
 //! resource write and nothing is rebuilt. T steps the theme too.
 //!
-//! Run with: `cargo run --example dark_light_theme`
+//! Run with: `cargo run --example 9_dark_light_theme`
 
 use bevy::prelude::*;
 use lava_ui_builder::prelude::*;

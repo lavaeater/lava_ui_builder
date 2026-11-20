@@ -9,15 +9,15 @@ thread's comments, e.g. [haalka](https://github.com/databasedav/haalka/tree/main
 
 | # | challenge | example | lines | notes |
 |---|---|---|---|---|
-| 1 | Game menu | `game_menu` | 115 | screens, slider, toggle, dropdown; mouse, keyboard and controller with a focus ring |
-| 2 | Inventory | `inventory` | 107 | item images + counts, drag to swap, tooltips |
-| 3 | Health bar | `health_bar` | 156 | world-space nameplate bound to the `Health` component; most lines are the 3D scene |
-| 4 | Responsive menu | `responsive_menu` | 72 | nine-slice skinned buttons, image moves above at 400 px |
-| 5 | Character editor | `character_editor` | 158 | name input, highlighted choices, scrolling colour list, 3D preview |
-| 6 | HUD | `hud` | 123 | minimap image, anchored corners, everything bound to one resource |
-| 7 | Bug report form | `bug_report` | 81 | dropdown, single- and multi-line input (Bevy's editing: cursor, selection, clipboard) |
-| 8 | Scoreboard | `scoreboard` | 137 | auto-sized table, avatar images, rebuilt from `Player` entities |
-| 9 | Dark/light theme | `dark_light_theme` | 80 | dark, light and accent-derived presets switched live |
+| 1 | Game menu | `1_game_menu` | 115 | screens, slider, toggle, dropdown; mouse, keyboard and controller with a focus ring |
+| 2 | Inventory | `2_inventory` | 107 | item images + counts, drag to swap, tooltips |
+| 3 | Health bar | `3_health_bar` | 156 | world-space nameplate bound to the `Health` component; most lines are the 3D scene |
+| 4 | Responsive menu | `4_responsive_menu` | 72 | nine-slice skinned buttons, image moves above at 400 px |
+| 5 | Character editor | `5_character_editor` | 158 | name input, highlighted choices, scrolling colour list, 3D preview |
+| 6 | HUD | `6_hud` | 123 | minimap image, anchored corners, everything bound to one resource |
+| 7 | Bug report form | `7_bug_report` | 81 | dropdown, single- and multi-line input (Bevy's editing: cursor, selection, clipboard) |
+| 8 | Scoreboard | `8_scoreboard` | 137 | auto-sized table, avatar images, rebuilt from `Player` entities |
+| 9 | Dark/light theme | `9_dark_light_theme` | 80 | dark, light and accent-derived presets switched live |
 | 10 | Design specification | — | — | still no open spec to follow |
 
 Line counts include doc comments and, for 3 and 5, the 3D scene setup. None of the

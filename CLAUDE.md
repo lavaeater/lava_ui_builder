@@ -21,15 +21,15 @@ cargo test follower_axis                 # tests whose name contains the filter
 cargo check --lib
 
 # Examples: one per UI challenge (see challenges.md), plus a few API demos
-cargo run --example game_menu           # 1: screens, slider/toggle/select, focus nav
-cargo run --example inventory           # 2: images, drag and drop, tooltips
-cargo run --example health_bar          # 3: WorldFollower + component bindings, 3D
-cargo run --example responsive_menu     # 4: nine-slice skinned buttons, breakpoints
-cargo run --example character_editor    # 5: 3D preview, choices, scroll, text input
-cargo run --example hud                 # 6: anchored corners, resource bindings
-cargo run --example bug_report          # 7: dropdown, text input, text area, toasts
-cargo run --example scoreboard          # 8: table, avatars, rebuild from ECS
-cargo run --example dark_light_theme    # 9: theme presets switched live
+cargo run --example 1_game_menu           # 1: screens, slider/toggle/select, focus nav
+cargo run --example 2_inventory           # 2: images, drag and drop, tooltips
+cargo run --example 3_health_bar          # 3: WorldFollower + component bindings, 3D
+cargo run --example 4_responsive_menu     # 4: nine-slice skinned buttons, breakpoints
+cargo run --example 5_character_editor    # 5: 3D preview, choices, scroll, text input
+cargo run --example 6_hud                 # 6: anchored corners, resource bindings
+cargo run --example 7_bug_report          # 7: dropdown, text input, text area, toasts
+cargo run --example 8_scoreboard          # 8: table, avatars, rebuild from ECS
+cargo run --example 9_dark_light_theme    # 9: theme presets switched live
 cargo run --example buttons             # variants, states, feathers side by side
 cargo run --example bsn_layout          # small scene example
 cargo run --example complex_example     # collapsibles, scrolling, runtime rebuild
@@ -129,7 +129,7 @@ plugins. Bindings and screens are generic, so they are registered per type by th
   a marker conditionally
 - an optional child is `Option<impl SceneList>`: `cond.then(|| bsn_list! {..})`; a
   `Children [..]` slot takes a list, so a single scene goes in as `vec![scene]`
-- a `Vec` of children must be one type: give cells a common shape (see `scoreboard.rs`)
+- a `Vec` of children must be one type: give cells a common shape (see `8_scoreboard.rs`)
 - generic components need a turbofish in BSN (`GoTo::<S>(..)`) and `S: Unpin`; hide that
   behind a scene fn (`go_to(state)`)
 - `on(..)` observers must be `Clone`: capture `Copy` data or clone into the closure;
@@ -146,7 +146,7 @@ Runtime rebuilds (e.g. a list whose contents change) go through
 `scenes::replace_children(commands, parent, list)`. The new children spawn in the
 `SpawnScene` schedule, after `Update`, so the system doing the rebuild cannot query them in
 the same run — and an entity spawned from a scene at `Startup` may not exist yet in the
-first `Update` (see the `Added` check in `scoreboard.rs`).
+first `Update` (see the `Added` check in `8_scoreboard.rs`).
 
 ### Bevy 0.20 API notes (things that differ from older docs)
 - picking events are concrete types: `On<PointerPress>`, `On<PointerDragStart>`, …

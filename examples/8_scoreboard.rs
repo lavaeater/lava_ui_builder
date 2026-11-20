@@ -8,7 +8,7 @@
 //!
 //! Press K to have someone score; Tab hides and shows the board.
 //!
-//! Run with: `cargo run --example scoreboard`
+//! Run with: `cargo run --example 8_scoreboard`
 
 use bevy::prelude::*;
 use lava_ui_builder::prelude::*;

@@ -9,7 +9,7 @@
 //! Resize the window narrow to see it switch. All of it is `Responsive` overrides on two
 //! nodes; there is no layout code.
 //!
-//! Run with: `cargo run --example responsive_menu`
+//! Run with: `cargo run --example 4_responsive_menu`
 
 use bevy::prelude::*;
 use lava_ui_builder::prelude::*;

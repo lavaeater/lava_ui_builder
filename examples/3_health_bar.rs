@@ -9,7 +9,7 @@
 //! The nameplate reads the sphere's `Health` through component bindings, so nothing
 //! copies health into the UI. T swaps to the light theme; Space respawns.
 //!
-//! Run with: `cargo run --example health_bar`
+//! Run with: `cargo run --example 3_health_bar`
 
 use bevy::prelude::*;
 use lava_ui_builder::prelude::*;

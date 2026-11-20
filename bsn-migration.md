@@ -193,7 +193,7 @@ In BSN the observer attaches inline, so the wrapper and the double insert both g
 
 **D6. Themes are baked at build time.** `UIBuilder::new(commands, Some(theme.clone()))`
 copies the theme into the builder and each widget reads colors out of it at spawn. Nothing
-links a spawned node back to the theme, so `examples/dark_light_theme.rs` switches themes
+links a spawned node back to the theme, so `examples/9_dark_light_theme.rs` switches themes
 by *destroying and rebuilding the entire UI* (`start_from_entity(.., clear_children: true)`).
 Feathers solves this with token components + a system that repaints on
 `resource_changed::<UiTheme>`. BSN doesn't force the change, but the migration is the
@@ -354,7 +354,7 @@ The token half is the answer to **D6**: introduce `LavaBackground(ThemeToken)` /
 `LavaTextColor(ThemeToken)` components plus a system that repaints them on
 `resource_changed::<LavaTheme>`, mirroring `bevy_feathers::theme`. Live theme switching
 then costs one resource write instead of a full UI rebuild, and
-`examples/dark_light_theme.rs` loses its `start_from_entity` rebuild entirely.
+`examples/9_dark_light_theme.rs` loses its `start_from_entity` rebuild entirely.
 
 If that is too big a step, an intermediate version keeps `Color`s in the props and simply
 accepts that theme switches still rebuild. The scene API does not depend on the token
