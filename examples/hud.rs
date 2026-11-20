@@ -1,324 +1,123 @@
-//! HUD example for `lava_ui_builder` — Challenge 6.
+//! Challenge 6: a HUD over a 3D scene.
 //!
-//! Demonstrates UI anchored to screen corners overlaid on a 2D scene.
-//!   Top-left:     minimap placeholder
-//!   Bottom-left:  HP counter + animated health bar
-//!   Bottom-center: game time + team scores
-//!   Bottom-right: ammo counter
+//! - Top left: a minimap image.  Bottom left: HP counter and bar.
+//! - Bottom centre: game time and both teams' scores.  Bottom right: ammo and a reload
+//!   warning.
 //!
-//! On the scene (BSN) API: the HUD is one tree, corner-anchored with flexbox, and the
-//! live numbers are ordinary marker-driven systems.
+//! Each corner is `scenes::anchored(..)`; every number is bound to the one `Match`
+//! resource, so the only game-side system is the one that plays the match. Space fires,
+//! R reloads.
 //!
 //! Run with: `cargo run --example hud`
 
 use bevy::prelude::*;
-use lava_ui_builder::{LavaTheme, LavaUiPlugin, ProgressBar, scenes};
-
-fn main() {
-    App::new()
-        .add_plugins(DefaultPlugins)
-        .insert_resource(LavaTheme::default())
-        .add_plugins(LavaUiPlugin)
-        .insert_resource(GameState::default())
-        .add_systems(Startup, (setup_camera, setup_scene, setup_hud))
-        .add_systems(
-            Update,
-            (
-                tick_game,
-                sync_hp_bar,
-                sync_hp_text,
-                sync_score_text,
-                sync_ammo_text,
-            ),
-        )
-        .run();
-}
-
-fn setup_camera(mut commands: Commands) {
-    commands.spawn(Camera2d);
-}
-
-// ── Mock game state ───────────────────────────────────────────────────────────
+use lava_ui_builder::prelude::*;
 
 #[derive(Resource)]
-struct GameState {
+struct Match {
     hp: f32,
     hp_max: f32,
-    elapsed: f32,
-    score_alpha: u32,
-    score_bravo: u32,
+    seconds: f32,
+    score: (u32, u32),
     ammo: u32,
     ammo_max: u32,
 }
 
-impl Default for GameState {
-    fn default() -> Self {
-        Self {
-            hp: 80.0,
+fn main() {
+    App::new()
+        .add_plugins((DefaultPlugins, LavaUiPlugin))
+        .insert_resource(LavaTheme::default())
+        .insert_resource(Match {
+            hp: 100.0,
             hp_max: 100.0,
-            elapsed: 0.0,
-            score_alpha: 7,
-            score_bravo: 5,
-            ammo: 23,
+            seconds: 0.0,
+            score: (7, 5),
+            ammo: 30,
             ammo_max: 30,
-        }
-    }
-}
-
-fn tick_game(time: Res<Time>, mut state: ResMut<GameState>) {
-    state.elapsed += time.delta_secs();
-    // HP slowly drains as a demo
-    state.hp = f32::mul_add(time.delta_secs(), -2.0, state.hp).max(0.0);
-}
-
-// ── Scene ────────────────────────────────────────────────────────────────────
-
-fn setup_scene(mut commands: Commands) {
-    // Simple grid of colored quads as a fake game scene
-    // `i8` so the grid coordinates convert to `f32` losslessly via `From`.
-    for x in -4..=4_i8 {
-        for y in -3..=3_i8 {
-            let (fx, fy) = (f32::from(x), f32::from(y));
-            let hue = (fx + fy) * 0.08;
-            commands.spawn((
-                Sprite {
-                    color: Color::hsl(hue * 360.0, 0.4, 0.25),
-                    custom_size: Some(Vec2::splat(80.0)),
-                    ..default()
-                },
-                Transform::from_xyz(fx * 82.0, fy * 82.0, 0.0),
-            ));
-        }
-    }
-}
-
-// ── UI marker components ──────────────────────────────────────────────────────
-
-#[derive(Component, Default, Clone)]
-struct HpBar;
-#[derive(Component, Default, Clone)]
-struct HpText;
-#[derive(Component, Default, Clone)]
-struct ScoreText;
-#[derive(Component, Default, Clone)]
-struct AmmoText;
-
-// ── HUD ───────────────────────────────────────────────────────────────────────
-
-const PANEL_BG: Color = Color::srgba(0.0, 0.0, 0.0, 0.7);
-const PANEL_BORDER: Color = Color::srgb(0.3, 0.3, 0.4);
-
-/// The HUD needs the initial `GameState`, so it is a scene-spawning system rather than a
-/// `scene.spawn()` one.
-fn setup_hud(mut commands: Commands, state: Res<GameState>) {
-    commands.spawn_scene(hud(&state));
-}
-
-/// The shared smoked-glass panel the three corners use.
-fn hud_panel() -> impl Scene {
-    bsn! {
-        @scenes::column(4.0)
-        Node {
-            padding: {UiRect::all(px(12.0))},
-            border: {UiRect::all(px(1.0))},
-            border_radius: {BorderRadius::all(px(8.0))},
-        }
-        BackgroundColor(PANEL_BG)
-        BorderColor::all(PANEL_BORDER)
-    }
-}
-
-fn hud(state: &GameState) -> impl Scene {
-    bsn! {
-        Node {
-            position_type: PositionType::Absolute,
-            width: percent(100),
-            height: percent(100),
-            flex_direction: FlexDirection::Column,
-            justify_content: JustifyContent::SpaceBetween,
-            padding: {UiRect::all(px(16.0))},
-        }
-        Pickable::IGNORE
-        Children [
-            // Top row: minimap on the left.
-            @scenes::row(0.0)
-            Node {
-                width: percent(100),
-                justify_content: JustifyContent::SpaceBetween,
-                align_items: AlignItems::Start,
-            }
-            Children [ @minimap() ]
-            --
-            // Bottom row: hp / score / ammo.
-            @scenes::row(0.0)
-            Node {
-                width: percent(100),
-                justify_content: JustifyContent::SpaceBetween,
-                align_items: AlignItems::End,
-            }
-            Children [
-                @hp_panel(state)
-                --
-                @score_panel(state)
-                --
-                @ammo_panel(state)
-            ]
-        ]
-    }
-}
-
-fn minimap() -> impl Scene {
-    let blips: Vec<_> = [Color::srgb(0.3, 0.6, 1.0), Color::srgb(1.0, 0.5, 0.3)]
-        .into_iter()
-        .map(|color| {
-            bsn! {
-                Node { width: {px(8.0)}, height: {px(8.0)}, border_radius: {BorderRadius::MAX} }
-                BackgroundColor(color)
-            }
         })
-        .collect();
+        .bind_resource::<Match>()
+        .add_systems(Startup, (world, hud.spawn()))
+        .add_systems(Update, play)
+        .run();
+}
 
-    bsn! {
-        @scenes::column(0.0)
-        Node {
-            width: {px(160.0)},
-            height: {px(160.0)},
-            align_items: AlignItems::Center,
-            justify_content: JustifyContent::Center,
-            border: {UiRect::all(px(2.0))},
-            border_radius: {BorderRadius::all(px(6.0))},
+fn hud() -> impl SceneList {
+    bsn_list! {
+        @scenes::fullscreen()
+        Children [
+            @scenes::anchored(ScreenAnchor::TopLeft, 16.0)
+            Children [ @scenes::icon("minimap.png", 160.0) ]
+            --
+            @scenes::anchored(ScreenAnchor::BottomLeft, 16.0)
+            Children [
+                @scenes::header("") @scenes::bind_text(|m: &Match| format!("{:.0} HP", m.hp))
+                --
+                @scenes::meter(1.0, 220.0, 14.0, ColorToken::HealthFill)
+                @scenes::bind_meter(|m: &Match| m.hp / m.hp_max)
+            ]
+            --
+            @scenes::anchored(ScreenAnchor::Bottom, 16.0)
+            Children [
+                @scenes::label("") @scenes::bind_text(|m: &Match| {
+                    let s = m.seconds as u32;
+                    format!("{:02}:{:02}", s / 60, s % 60)
+                })
+                --
+                @scenes::header("") @scenes::bind_text(|m: &Match| format!("{}  -  {}", m.score.0, m.score.1))
+            ]
+            --
+            @scenes::anchored(ScreenAnchor::BottomRight, 16.0)
+            Children [
+                @scenes::caption("RELOAD [R]") ThemedTextColor(ColorToken::Danger)
+                @scenes::bind_visible(|m: &Match| m.ammo < 8)
+                --
+                @scenes::header("") @scenes::bind_text(|m: &Match| format!("{} / {}", m.ammo, m.ammo_max))
+                --
+                @scenes::meter(1.0, 160.0, 8.0, ColorToken::MeterFill)
+                @scenes::bind_meter(|m: &Match| m.ammo as f32 / m.ammo_max as f32)
+            ]
+        ]
+    }
+}
+
+fn play(time: Res<Time>, keys: Res<ButtonInput<KeyCode>>, mut game: ResMut<Match>) {
+    game.seconds += time.delta_secs();
+    game.hp = (game.hp - time.delta_secs() * 2.0).max(0.0);
+    if keys.just_pressed(KeyCode::Space) && game.ammo > 0 {
+        game.ammo -= 1;
+        if game.ammo % 5 == 0 {
+            game.score.0 += 1;
         }
-        BackgroundColor(Color::srgba(0.05, 0.15, 0.05, 0.92))
-        BorderColor::all(Color::srgb(0.4, 0.6, 0.4))
-        Children [
-            @scenes::text("[ MAP ]", 14.0, Color::srgb(0.5, 0.8, 0.5))
-            --
-            @scenes::row(20.0)
-            Node { margin: {UiRect::top(px(10.0))} }
-            Children [ {blips} ]
-        ]
+    }
+    if keys.just_pressed(KeyCode::KeyR) {
+        game.ammo = game.ammo_max;
     }
 }
 
-fn hp_panel(state: &GameState) -> impl Scene {
-    let hp_now = format!("{:.0}/{:.0}", state.hp, state.hp_max);
-    let fraction = state.hp / state.hp_max;
-    bsn! {
-        @hud_panel()
-        Node { row_gap: {px(6.0)} }
-        Children [
-            @scenes::row(0.0)
-            Node { width: {px(200.0)}, justify_content: JustifyContent::SpaceBetween }
-            Children [
-                @scenes::text("HP", 14.0, Color::srgb(0.8, 0.8, 0.8))
-                --
-                @scenes::text(hp_now, 14.0, Color::srgb(0.5, 1.0, 0.5)) HpText
-            ]
-            --
-            @scenes::progress_bar(
-                fraction, 200.0, 16.0,
-                Color::srgb(0.2, 0.85, 0.3),
-                Color::srgb(0.15, 0.15, 0.15),
-            )
-            HpBar
-        ]
+/// A plain 3D scene for the HUD to sit on.
+fn world(
+    mut commands: Commands,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+) {
+    commands.spawn((
+        Camera3d::default(),
+        Transform::from_xyz(-6.0, 5.0, 9.0).looking_at(Vec3::ZERO, Vec3::Y),
+    ));
+    commands.spawn((
+        DirectionalLight::default(),
+        Transform::from_xyz(4.0, 8.0, 4.0).looking_at(Vec3::ZERO, Vec3::Y),
+    ));
+    commands.spawn((
+        Mesh3d(meshes.add(Plane3d::default().mesh().size(30.0, 30.0))),
+        MeshMaterial3d(materials.add(Color::srgb(0.25, 0.32, 0.25))),
+    ));
+    for i in 0..6_u8 {
+        let x = f32::from(i) * 2.5 - 6.0;
+        commands.spawn((
+            Mesh3d(meshes.add(Cuboid::new(1.2, 1.0 + f32::from(i % 3), 1.2))),
+            MeshMaterial3d(materials.add(Color::srgb(0.55, 0.50, 0.45))),
+            Transform::from_xyz(x, 0.5, -2.0 - f32::from(i % 2) * 3.0),
+        ));
     }
-}
-
-fn score_panel(state: &GameState) -> impl Scene {
-    let clock = game_time_str(state.elapsed);
-    let score = format!("{} - {}", state.score_alpha, state.score_bravo);
-    bsn! {
-        @hud_panel()
-        Node { align_items: AlignItems::Center }
-        Children [
-            @scenes::text(clock, 14.0, Color::srgb(0.9, 0.9, 0.9))
-            --
-            @scenes::row(16.0)
-            Node { align_items: AlignItems::Center }
-            Children [
-                @scenes::text("ALPHA", 14.0, Color::srgb(0.4, 0.6, 1.0))
-                --
-                @scenes::text(score, 22.0, Color::WHITE) ScoreText
-                --
-                @scenes::text("BRAVO", 14.0, Color::srgb(1.0, 0.5, 0.3))
-            ]
-        ]
-    }
-}
-
-fn ammo_panel(state: &GameState) -> impl Scene {
-    let ammo = format!("{} / {}", state.ammo, state.ammo_max);
-    let pips: Vec<_> = (0..state.ammo_max)
-        .map(|i| {
-            let color = if i < state.ammo {
-                Color::srgb(1.0, 0.85, 0.2)
-            } else {
-                Color::srgb(0.2, 0.2, 0.2)
-            };
-            bsn! {
-                Node { width: {px(6.0)}, height: {px(16.0)}, border_radius: {BorderRadius::all(px(2.0))} }
-                BackgroundColor(color)
-            }
-        })
-        .collect();
-
-    bsn! {
-        @hud_panel()
-        Node { align_items: AlignItems::End }
-        Children [
-            @scenes::text("AMMO", 12.0, Color::srgb(0.7, 0.7, 0.7))
-            --
-            @scenes::text(ammo, 28.0, Color::WHITE) AmmoText
-            --
-            @scenes::row(3.0)
-            Node { margin: {UiRect::top(px(4.0))} }
-            Children [ {pips} ]
-        ]
-    }
-}
-
-// ── Runtime sync systems ──────────────────────────────────────────────────────
-
-fn sync_hp_bar(state: Res<GameState>, mut bars: Query<&mut ProgressBar, With<HpBar>>) {
-    if !state.is_changed() {
-        return;
-    }
-    for mut bar in &mut bars {
-        bar.value = state.hp / state.hp_max;
-    }
-}
-
-fn sync_hp_text(state: Res<GameState>, mut texts: Query<&mut Text, With<HpText>>) {
-    if !state.is_changed() {
-        return;
-    }
-    for mut t in &mut texts {
-        **t = format!("{:.0}/{:.0}", state.hp, state.hp_max);
-    }
-}
-
-fn sync_score_text(state: Res<GameState>, mut texts: Query<&mut Text, With<ScoreText>>) {
-    if !state.is_changed() {
-        return;
-    }
-    for mut t in &mut texts {
-        **t = format!("{} - {}", state.score_alpha, state.score_bravo);
-    }
-}
-
-fn sync_ammo_text(state: Res<GameState>, mut texts: Query<&mut Text, With<AmmoText>>) {
-    if !state.is_changed() {
-        return;
-    }
-    for mut t in &mut texts {
-        **t = format!("{} / {}", state.ammo, state.ammo_max);
-    }
-}
-
-#[allow(clippy::cast_possible_truncation)]
-fn game_time_str(elapsed: f32) -> String {
-    let mins = (elapsed as i32) / 60;
-    let secs = (elapsed as i32) % 60;
-    format!("{mins:02}:{secs:02}")
 }

@@ -15,7 +15,7 @@
 
 use bevy::platform::collections::HashMap;
 use bevy::prelude::*;
-use lava_ui_builder::{LavaTheme, LavaUiPlugin, scenes};
+use lava_ui_builder::prelude::*;
 
 // ============================================================================
 // Mock domain types (stand-ins for the original game project)
@@ -185,9 +185,6 @@ impl PlayerActivityLog {
 // UI
 // ============================================================================
 
-const PANEL_BG: Color = Color::srgba(0.1, 0.1, 0.1, 0.7);
-const HEADING: Color = Color::srgb(1.0, 0.8, 0.0);
-
 /// A scene-spawning system: the whole tree is derived from world data, so it needs the
 /// queries. One `spawn_scene` replaces the old builder walk.
 fn setup_trade_ui(
@@ -248,7 +245,7 @@ fn trade_card_panel(stacks: &[CardStack]) -> impl Scene {
             TradeCardList
             @scenes::scrollable_list_bounded(0.0, 500.0)
             Node { width: {px(340.0)}, padding: {UiRect::all(px(4.0))} }
-            BackgroundColor(PANEL_BG)
+            ThemedBackground(ColorToken::SurfaceRaised)
             Children [ {rows} ]
         },
     )
@@ -266,7 +263,7 @@ fn trade_card_row(pile_value: usize, stacks: &[&CardStack]) -> impl Scene {
             flex_shrink: 0.0,
         }
         Children [
-            @scenes::text(format!("{pile_value}:"), 20.0, Color::WHITE)
+            @scenes::label(format!("{pile_value}:"))
             --
             {cards}
         ]
@@ -293,11 +290,11 @@ fn trade_card(stack: &CardStack) -> impl Scene {
             margin: {UiRect::all(px(2.0))},
             border_radius: {BorderRadius::all(px(4.0))},
         }
-        BackgroundColor(Color::srgba(0.2, 0.2, 0.3, 0.8))
+        ThemedBackground(ColorToken::InputBg)
         Children [
-            @scenes::text(name, 16.0, Color::WHITE)
+            @scenes::label(name) ThemedFont(FontToken::Small) ThemedTextColor(ColorToken::InputText)
             --
-            @scenes::text(subtitle, 12.0, Color::srgb(0.8, 0.8, 0.8))
+            @scenes::caption(subtitle)
         ]
     }
 }
@@ -325,9 +322,9 @@ fn game_info_panel(roster: &[(String, Faction, bool)], activity: &str) -> impl S
         bsn_list! {
             @scenes::column(0.0)
             Node { width: {px(500.0)}, padding: {UiRect::all(px(4.0))} }
-            BackgroundColor(PANEL_BG)
+            ThemedBackground(ColorToken::SurfaceRaised)
             Children [
-                @scenes::text("Game State", 20.0, HEADING)
+                @scenes::label("Game State") ThemedTextColor(ColorToken::Accent)
                 --
                 GameStateDisplay
                 @scenes::column(0.0)
@@ -343,12 +340,12 @@ fn game_info_panel(roster: &[(String, Faction, bool)], activity: &str) -> impl S
                     --
                     @scenes::label("Round: 3")
                     --
-                    @scenes::text("Census Order:", 16.0, HEADING)
+                    @scenes::caption("Census Order:") ThemedTextColor(ColorToken::Accent)
                     --
                     {census}
                 ]
                 --
-                @scenes::text("Player Activity", 20.0, HEADING)
+                @scenes::label("Player Activity") ThemedTextColor(ColorToken::Accent)
                 --
                 PlayerActivityListContainer
                 @scenes::scrollable_list_bounded(0.0, 300.0)
@@ -377,7 +374,7 @@ fn activity_row(name: &str, faction: Faction, is_human: bool, activity: &str) ->
             margin: {UiRect::all(px(2.0))},
             border_radius: {BorderRadius::all(px(4.0))},
         }
-        BackgroundColor(Color::srgba(0.15, 0.15, 0.2, 0.8))
+        ThemedBackground(ColorToken::InputBg)
         Children [
             // Faction colour badge.
             Node {
@@ -390,7 +387,7 @@ fn activity_row(name: &str, faction: Faction, is_human: bool, activity: &str) ->
             --
             @scenes::text(display_name, 14.0, color)
             --
-            @scenes::text(activity, 14.0, Color::WHITE)
+            @scenes::caption(activity)
         ]
     }
 }

@@ -9,6 +9,12 @@ against the vendored sources in `~/.cargo/registry/src/*/bevy_scene-0.19.1/` and
 `examples/ui/widgets/feathers_counter.rs`. Every BSN construct proposed below was
 compiled against this crate first — see Appendix A.
 
+> **Since then (2026-11, Bevy 0.20):** the scene API grew into a game kit — themed
+> controls, bindings, screens, focus navigation, overlays, media, responsive layout — and
+> `scenes.rs` became the `scenes/` directory. This document stays the record of the
+> migration itself; `roadmap.md` covers the kit, and the bundle and builder APIs described
+> here are now frozen (kept working, no new widgets).
+
 ---
 
 ## 1. TL;DR

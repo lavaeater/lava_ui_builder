@@ -8,65 +8,110 @@ display some game info.
 ## Usage
 
 Widgets are **scenes**, built with Bevy's `bsn!` macro. They take no theme argument:
-colours and fonts resolve from the `LavaTheme` resource through tokens.
+colours and fonts resolve from the `LavaTheme` resource through tokens, so swapping the
+theme repaints live UI. Behaviour (dragging, editing, checked state) is Bevy's own
+headless widgets; lava adds the look and the wiring.
 
-```rust
+```rust,no_run
 use bevy::prelude::*;
-use bevy::ui_widgets::Activate;
-use lava_ui_builder::{scenes, LavaTheme, LavaUiPlugin};
+use lava_ui_builder::prelude::*;
+
+#[derive(States, Default, Clone, Copy, PartialEq, Eq, Hash, Debug)]
+enum Menu { #[default] Main, Audio }
+
+#[derive(Resource)]
+struct Audio { volume: f32 }
 
 fn main() {
     App::new()
         .add_plugins((DefaultPlugins, LavaUiPlugin))
-        .insert_resource(LavaTheme::default())
-        .add_systems(Startup, menu.spawn())
+        .insert_resource(LavaTheme::from_accent(Color::srgb(0.9, 0.4, 0.15)))
+        .insert_resource(Audio { volume: 0.7 })
+        .bind_resource::<Audio>()               // lets widgets read and write `Audio`
+        .init_state::<Menu>()
+        .add_screen(Menu::Main, main_menu)      // spawned on enter, despawned on exit
+        .add_screen(Menu::Audio, audio_menu)
+        .screen_back(Menu::Audio, Menu::Main)   // Escape / gamepad B / `Back` buttons
+        .add_systems(Startup, |mut c: Commands| { c.spawn(Camera2d); })
         .run();
 }
 
-fn menu() -> impl SceneList {
-    bsn_list! {
-        Camera2d
-        --
-        @scenes::ui_root()
+fn main_menu() -> impl Scene {
+    bsn! {
+        @scenes::screen()
         Children [
-            @scenes::header("My Game")
-            --
-            @scenes::button("Play")
-            // the action lives next to the button
-            on(|_: On<Activate>| info!("play!"))
-            --
-            // same widget, one field overridden -- this is patching
-            @scenes::button("Quit")
-            Node { width: px(260) }
-            on(|_: On<Activate>, mut exit: MessageWriter<AppExit>| {
-                exit.write(AppExit::Success);
-            })
+            @scenes::card()
+            Children [
+                @scenes::title("My Game")
+                --
+                @scenes::button("Play") AutoFocus on(|_: On<Activate>| info!("play!"))
+                --
+                @scenes::button("Audio") Variant::Secondary @scenes::go_to(Menu::Audio)
+                --
+                @scenes::button("Quit") Variant::Danger
+                on(|_: On<Activate>, mut exit: MessageWriter<AppExit>| { exit.write(AppExit::Success); })
+            ]
+        ]
+    }
+}
+
+fn audio_menu() -> impl Scene {
+    bsn! {
+        @scenes::screen()
+        Children [
+            @scenes::card()
+            Children [
+                @scenes::header("Audio")
+                --
+                @scenes::slider(0.0, 1.0, 0.7) AutoFocus
+                @scenes::bind_slider(|a: &Audio| a.volume, |a, v| a.volume = v)
+                --
+                @scenes::label("") @scenes::bind_text(|a: &Audio| format!("{:.0}%", a.volume * 100.0))
+                --
+                @scenes::button("Back") Variant::Ghost Back
+            ]
         ]
     }
 }
 ```
 
-Switching theme is one resource write — every themed entity repaints in place, nothing is
-respawned:
+That menu works with the mouse, the keyboard (Tab, arrows, Enter, Escape) and a
+controller (D-pad / stick, A, B), with a focus ring on the focused widget.
 
-```rust
-*theme = light_theme();
-```
+### What is in the box
 
-Three things to know:
+| | |
+|---|---|
+| **Theme** | `LavaTheme` with roles (`surface`, `controls`, button variants, meters, fonts) and presets `dark()`, `light()`, `from_accent(color)`. |
+| **Variants & states** | `Variant::{Primary, Secondary, Danger, Success, Ghost}` on any button; Bevy's `Selected` / `Checked` / `InteractionDisabled` markers pick the selected / disabled look. |
+| **Layout** | `screen`, `ui_root`, `backdrop`, `card`, `row`, `column`, `grid`, `table`, `anchored(ScreenAnchor::BottomLeft, ..)`, `scrollable_list`, `Responsive` / `stack_below` / `full_width_below`. |
+| **Text** | `title`, `header`, `label`, `caption`; recolour by patching a token (`ThemedTextColor(ColorToken::Danger)`). |
+| **Controls** | `button`, `slider`, `checkbox`, `toggle`, `choice`, `cycle`, `select`, `text_input`, `text_area`, `meter`, `collapsible`, `list_item`. Each emits Bevy's `ValueChange<T>`. |
+| **Bindings** | `bind_text`, `bind_meter`, `bind_visible` (resource → widget); `bind_text_to`, `bind_meter_to` (another entity's component → widget); `bind_slider`, `bind_checked`, `bind_choice`, `bind_input` (two-way). |
+| **Screens** | `add_screen`, `go_to`, `Back`, `screen_back`, `NavigateBack`. |
+| **Overlays** | `tooltip`, `Toast::success(..)`, `confirm(..)` dialogs. |
+| **Media** | `image`, `icon`, `nine_slice`, `skinned_button` (a nine-slice skin tinted by the theme). |
+| **Other** | `draggable` / `drop_target` / `Dropped`, `WorldFollower` (UI over a 3D entity), crawls. |
 
-* **Themed widgets cannot be recoloured by patching.** `apply_theme_tokens` rewrites
-  `TextColor` and `InteractionPalette` each frame for entities carrying tokens. Use
-  `scenes::text` / `scenes::button_colored` / `scenes::list_item` when the colour is
-  content rather than theme, and never write `BackgroundColor` on an entity that has an
-  `InteractionPalette` — swap the palette instead.
+Things to know:
+
+* **Themed widgets cannot be recoloured by patching a colour.** `apply_theme_tokens`
+  rewrites `TextColor` and palettes every frame for entities carrying tokens. Patch the
+  *token* or the *variant* instead; `scenes::text` / `scenes::button_colored` are the
+  escape hatches for colour that is content, not style.
+* **Sizes are layout, not theme**: patch `Node` (`@scenes::button("Ok") Node { width: px(200) }`).
 * **`on(..)` needs a `Clone` observer system**, so capture `Copy` data (or clone into the
   closure) rather than moving a `String` in.
-* **An optional child is `Option<impl SceneList>`**: `cond.then(|| bsn_list! {..})`.
+* **Bindings hold plain `fn`s** (closures that capture nothing), and each source type is
+  registered once: `app.bind_resource::<R>()` / `app.bind_component::<C>()`.
 
-Start from `examples/bsn_layout.rs`. `examples/basic_layout.rs` is deliberately left on
-the older bundle-function and `UIBuilder` APIs, which are still supported; see
-`bsn-migration.md` for how the three APIs relate.
+### Examples
+
+The ten "UI challenges" from [bevyengine/bevy#11100](https://github.com/bevyengine/bevy/discussions/11100)
+are implemented as examples; see `challenges.md`. `cargo run --example game_menu` is a
+good start. `examples/basic_layout.rs` is deliberately left on the older bundle-function
+and `UIBuilder` APIs, which are frozen but still supported; see `bsn-migration.md` for
+how the three APIs relate, and `roadmap.md` for where the library is going.
 
 **Updating a project that depends on this crate?** `migration-guide.md` is the
 step-by-step version: what actually breaks (short list), what improves for free, and how

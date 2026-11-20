@@ -1,24 +1,49 @@
-use std::borrow::Cow;
+//! lava_ui_builder: a game UI kit for Bevy 0.20 with a theme you can swap at runtime.
+//!
+//! Start with [`prelude`] and [`scenes`]: widgets are BSN scene functions, coloured by
+//! theme tokens, customised by patching. See `README.md` for a tour and `roadmap.md` for
+//! where the library is going.
+//!
+//! Three APIs live here. The **scene API** ([`scenes`]) is the one to use; the
+//! bundle-function API ([`bundles`], re-exported at the root) and the imperative
+//! [`UIBuilder`] are frozen and kept for existing downstream code.
+
 use std::collections::VecDeque;
 
-use bevy::color::palettes::basic::WHITE;
-use bevy::ecs::spawn::SpawnWith;
-use bevy::ecs::observer::IntoEntityObserver;
-use bevy::ecs::system::IntoObserverSystem;
-use bevy::ecs::template::FromTemplate;
-use bevy::picking::hover::Hovered;
 use bevy::prelude::*;
+use bevy::window::WindowResized;
 
+pub mod bind;
 mod builder;
 mod button_builder;
+pub mod bundles;
+pub mod components;
+pub mod controls;
 pub mod crawl;
+pub mod drag;
+pub mod focus;
+pub mod media;
+pub mod overlay;
+pub mod responsive;
 pub mod scenes;
+pub mod screens;
 pub mod systems;
+pub mod theme;
 pub mod tokens;
 
+pub use bundles::*;
+pub use components::*;
+pub use bind::BindAppExt;
+pub use drag::{Draggable, DropTarget, Dropped};
+pub use focus::{NavigateBack, UiNavigation};
+pub use overlay::{DialogResult, Toast, ToastKind, Tooltip};
+pub use responsive::{NarrowLayout, Responsive};
+pub use scenes::ScreenAnchor;
+pub use screens::{Back, GoTo, ScreenAppExt};
+pub use theme::*;
 pub use tokens::{
     ColorToken, FontToken, ThemedBackground, ThemedBorderColor, ThemedFont, ThemedPalette,
-    ThemedTextColor,
+    ThemedTextColor, Variant, VariantText,
 };
 
 // Re-export feathers types for external use.
@@ -28,391 +53,53 @@ pub use tokens::{
 // 0.20 scene, so the feathers styling systems (which key on `ButtonVariant`, `Hovered` and
 // the theme components) dress it the same way.
 pub use bevy::feathers::controls::ButtonVariant;
-
-/// What a feathers button looks like (the imperative counterpart of `FeathersButtonProps`).
-#[derive(Debug, Clone, Default)]
-pub struct ButtonProps {
-    pub variant: ButtonVariant,
-    pub corners: RoundedCorners,
-}
-
-/// A feathers button, as the 0.20 `FeathersButton` scene builds it: `overrides` are added
-/// on top, `caption` spawns the label. The font is Bevy's default (the scene loads
-/// feathers' own by path, which needs an asset server).
-pub fn feathers_button_fn<B: Bundle, C: bevy::ecs::spawn::SpawnableList<ChildOf> + Send + Sync + 'static>(
-    props: ButtonProps,
-    overrides: B,
-    caption: C,
-) -> impl Bundle {
-    use bevy::feathers::constants::size;
-    use bevy::feathers::focus::FocusIndicator;
-    use bevy::feathers::font_styles::InheritableFont;
-    use bevy::feathers::theme::{InheritableThemeTextColor, ThemeBackgroundColor};
-    use bevy::feathers::tokens;
-    use bevy::input_focus::tab_navigation::TabIndex;
-    use bevy::picking::cursor::EntityCursor;
-    use bevy::picking::hover::Hovered;
-    use bevy::window::SystemCursorIcon;
-    (
-        Node {
-            height: size::ROW_HEIGHT,
-            justify_content: JustifyContent::Center,
-            align_items: AlignItems::Center,
-            padding: UiRect::horizontal(px(8)),
-            border_radius: props.corners.to_border_radius(4.0),
-            ..default()
-        },
-        bevy::ui_widgets::Button,
-        props.variant,
-        Hovered::default(),
-        EntityCursor::System(SystemCursorIcon::Pointer),
-        TabIndex(0),
-        FocusIndicator,
-        ThemeBackgroundColor(tokens::BUTTON_BG),
-        InheritableThemeTextColor(tokens::BUTTON_TEXT),
-        InheritableFont {
-            font: Handle::default(),
-            font_size: size::MEDIUM_FONT,
-            weight: bevy::text::FontWeight::NORMAL,
-        },
-        overrides,
-        Children::spawn(caption),
-    )
-}
-
 pub use bevy::feathers::rounded_corners::RoundedCorners;
 pub use bevy::feathers::theme::ThemedText;
 pub use bevy::ui::InteractionDisabled;
 pub use bevy::ui_widgets::Activate;
-use bevy::window::WindowResized;
-// ============================================================================
-// Theme types — slim replacements for the old NodeDef/NodePartial/ButtonDef/etc.
-// ============================================================================
 
-/// Theme-level colors and fonts for buttons.
-#[derive(Clone, Debug)]
-pub struct ButtonTheme {
-    pub bg: Color,
-    pub bg_hovered: Color,
-    pub bg_pressed: Color,
-    pub text_color: Color,
-    pub font: Handle<Font>,
-    pub font_size: f32,
-    pub border_radius: BorderRadius,
-    pub border_width: Val,
-    pub border_color: Color,
-    pub height: Val,
-    pub width: Val,
-    /// Colors for collapsible section toggle buttons.
-    pub collapsible_bg: Color,
-    pub collapsible_bg_hovered: Color,
-    pub collapsible_bg_pressed: Color,
-}
+/// Compiles the README's code blocks as doctests, so the front-page example cannot rot.
+#[doc = include_str!("../README.md")]
+#[cfg(doctest)]
+pub struct ReadmeDoctests;
 
-impl Default for ButtonTheme {
-    fn default() -> Self {
-        Self {
-            bg: Color::srgb(0.275, 0.400, 0.750),
-            bg_hovered: Color::srgb(0.384, 0.600, 0.820),
-            bg_pressed: Color::srgb(0.239, 0.286, 0.600),
-            text_color: Color::from(WHITE),
-            font: Handle::default(),
-            font_size: 40.0,
-            border_radius: BorderRadius::MAX,
-            border_width: px(2.0),
-            border_color: Color::srgb(0.2, 0.2, 0.2),
-            height: px(50.0),
-            width: px(150.0),
-            collapsible_bg: Color::srgb(0.25, 0.25, 0.3),
-            collapsible_bg_hovered: Color::srgb(0.35, 0.35, 0.4),
-            collapsible_bg_pressed: Color::srgb(0.4, 0.6, 0.4),
-        }
-    }
-}
-
-/// Theme-level colors and fonts for text labels.
-#[derive(Clone, Debug)]
-pub struct TextTheme {
-    pub font: Handle<Font>,
-    pub header_size: f32,
-    pub label_size: f32,
-    pub header_color: Color,
-    pub label_color: Color,
-}
-
-impl Default for TextTheme {
-    fn default() -> Self {
-        Self {
-            font: Handle::default(),
-            header_size: 40.0,
-            label_size: 24.0,
-            header_color: Color::srgb(0.988, 0.984, 0.800),
-            label_color: Color::srgb(0.867, 0.827, 0.412),
-        }
-    }
-}
-
-/// Theme-level colors for meters: progress bars, health bars, charge gauges.
+/// Everything a game needs to build UI with the scene API, in one import:
 ///
-/// `fill` is the general-purpose fill; `health` exists because a health bar is the one
-/// meter nearly every game has, and it usually wants its own colour regardless of what the
-/// rest of the palette does.
-#[derive(Clone, Debug)]
-pub struct MeterTheme {
-    /// The empty part of the bar, behind the fill.
-    pub bg: Color,
-    pub fill: Color,
-    pub health: Color,
-}
-
-impl Default for MeterTheme {
-    fn default() -> Self {
-        Self {
-            bg: Color::srgba(0.0, 0.0, 0.0, 0.55),
-            fill: Color::srgb(0.275, 0.600, 0.900),
-            health: Color::srgb(0.200, 0.800, 0.300),
-        }
-    }
-}
-
-/// Top-level UI theme resource. Insert this as a `Resource` to configure the look of
-/// bundle-function widgets and the imperative `UIBuilder`.
-#[derive(Resource, Clone, Debug)]
-pub struct LavaTheme {
-    pub button: ButtonTheme,
-    pub text: TextTheme,
-    pub meter: MeterTheme,
-    pub bg_color: Color,
-    pub border_color: Color,
-    pub ui_width: f32,
-    pub ui_height: f32,
-}
-
-impl Default for LavaTheme {
-    fn default() -> Self {
-        Self {
-            button: ButtonTheme::default(),
-            text: TextTheme::default(),
-            meter: MeterTheme::default(),
-            bg_color: Color::srgba(0.5, 0.5, 0.5, 0.9),
-            border_color: Color::srgba(0.2, 0.2, 0.2, 0.9),
-            ui_width: 1920.0,
-            ui_height: 1080.0,
-        }
-    }
-}
-
-/// Interaction palette for hover/press color changes.
-///
-/// `Default` is required so the component can be patched field-by-field in `bsn!`.
-#[derive(Component, Clone, Debug, Default)]
-pub struct InteractionPalette {
-    pub none: Color,
-    pub hovered: Color,
-    pub pressed: Color,
-}
-
-// ============================================================================
-// Bundle-function widgets — inspired by the widget.rs pattern.
-// These return `impl Bundle` and compose with `children![]`.
-// ============================================================================
-
-/// Style overrides for text widgets. All fields are optional; `None` falls back to the theme default.
-#[derive(Clone, Debug, Default)]
-pub struct TextStyle {
-    pub font: Option<Handle<Font>>,
-    pub font_size: Option<f32>,
-    pub color: Option<Color>,
-    pub justify: Option<bevy::text::Justify>,
-    pub line_break: Option<bevy::text::LineBreak>,
-}
-
-impl TextStyle {
-    /// Returns a `TextStyle` with only font size set.
-    pub fn size(font_size: f32) -> Self {
-        Self {
-            font_size: Some(font_size),
-            ..default()
-        }
-    }
-
-    /// Returns a `TextStyle` with only color set.
-    pub fn color(color: Color) -> Self {
-        Self {
-            color: Some(color),
-            ..default()
-        }
-    }
-
-    /// Returns a `TextStyle` with font size and color set.
-    pub fn size_color(font_size: f32, color: Color) -> Self {
-        Self {
-            font_size: Some(font_size),
-            color: Some(color),
-            ..default()
-        }
-    }
-}
-
-/// Convenience helpers matching the palette module style.
-pub const fn rect_all(val: Val) -> UiRect {
-    UiRect::all(val)
-}
-
-/// A root UI node that fills the window and centers its content.
-pub fn ui_root(name: impl Into<Cow<'static, str>>) -> impl Bundle {
-    (
-        Name::new(name),
-        Node {
-            position_type: PositionType::Absolute,
-            width: percent(100.0),
-            height: percent(100.0),
-            align_items: AlignItems::Center,
-            justify_content: JustifyContent::Center,
-            flex_direction: FlexDirection::Column,
-            row_gap: px(20.0),
-            ..default()
-        },
-        Pickable::IGNORE,
-    )
-}
-
-/// A root UI node with a custom `Node` layout.
-pub fn ui_root_with(name: impl Into<Cow<'static, str>>, node: Node) -> impl Bundle {
-    (Name::new(name), node, Pickable::IGNORE)
-}
-
-/// A simple header label using the given theme.
-pub fn header(text: impl Into<String>, theme: &TextTheme) -> impl Bundle {
-    (
-        Name::new("Header"),
-        Text(text.into()),
-        TextFont::default()
-            .with_font(theme.font.clone())
-            .with_font_size(theme.header_size),
-        TextColor(theme.header_color),
-    )
-}
-
-/// A simple text label using the given theme.
-pub fn label(text: impl Into<String>, theme: &TextTheme) -> impl Bundle {
-    (
-        Name::new("Label"),
-        Text(text.into()),
-        TextFont::default()
-            .with_font(theme.font.clone())
-            .with_font_size(theme.label_size),
-        TextColor(theme.label_color),
-    )
-}
-
-/// A themed button with text and an action defined as an [`Observer`].
-/// Uses the default button node layout (large, rounded, centered).
-pub fn themed_button<M, I>(
-    text: impl Into<String>,
-    action: I,
-    theme: &ButtonTheme,
-) -> impl Bundle
-where
-    I: IntoEntityObserver<M> + Sync,
-{
-    themed_button_with_node(
-        text,
-        action,
-        theme,
-        Node {
-            width: px(380.0),
-            height: px(80.0),
-            align_items: AlignItems::Center,
-            justify_content: JustifyContent::Center,
-            border_radius: theme.border_radius,
-            ..default()
-        },
-    )
-}
-
-/// A small themed button with text and an action.
-pub fn themed_button_small<M, I>(
-    text: impl Into<String>,
-    action: I,
-    theme: &ButtonTheme,
-) -> impl Bundle
-where
-    I: IntoEntityObserver<M> + Sync,
-{
-    themed_button_with_node(
-        text,
-        action,
-        theme,
-        Node {
-            width: px(30.0),
-            height: px(30.0),
-            align_items: AlignItems::Center,
-            justify_content: JustifyContent::Center,
-            ..default()
-        },
-    )
-}
-
-/// A themed button with a custom `Node` layout.
-pub fn themed_button_with_node<M, I>(
-    text: impl Into<String>,
-    action: I,
-    theme: &ButtonTheme,
-    button_node: Node,
-) -> impl Bundle
-where
-    I: IntoEntityObserver<M> + Sync,
-{
-    let text = text.into();
-    let bg = theme.bg;
-    let palette = InteractionPalette {
-        none: theme.bg,
-        hovered: theme.bg_hovered,
-        pressed: theme.bg_pressed,
+/// ```ignore
+/// use bevy::prelude::*;
+/// use lava_ui_builder::prelude::*;
+/// ```
+pub mod prelude {
+    pub use crate::bind::BindAppExt;
+    pub use crate::controls::{Cycle, OptionIndex, Select};
+    pub use crate::drag::Dropped;
+    pub use crate::focus::{NavigateBack, UiNavigation};
+    pub use crate::overlay::{DialogResult, Toast, ToastKind, Tooltip};
+    pub use crate::responsive::{NarrowLayout, Responsive};
+    pub use crate::scenes::{self, ScreenAnchor};
+    pub use crate::screens::{Back, GoTo, ScreenAppExt};
+    pub use crate::theme::{
+        ButtonColors, ButtonTheme, ControlTheme, LavaTheme, MeterTheme, SurfaceTheme, TextTheme,
     };
-    let text_color = theme.text_color;
-    let font = theme.font.clone();
-    let font_size = theme.font_size;
-    (
-        Name::new("Button"),
-        Node::default(),
-        Children::spawn(SpawnWith(move |parent: &mut ChildSpawner| {
-            parent
-                .spawn((
-                    Name::new("Button Inner"),
-                    // `bevy::ui_widgets::Button` (not the legacy `bevy_ui::widget::Button`):
-                    // it emits `Activate` and tracks `Hovered`/`Pressed`, which is what
-                    // `InteractionPalette` reads. The legacy button would instead bring an
-                    // `Interaction` component that nothing in this crate looks at any more.
-                    bevy::ui_widgets::Button,
-                    Hovered::default(),
-                    BackgroundColor(bg),
-                    palette,
-                    children![(
-                        Name::new("Button Text"),
-                        Text(text),
-                        TextFont::default()
-                            .with_font(font)
-                            .with_font_size(font_size),
-                        TextColor(text_color),
-                        Pickable::IGNORE,
-                    )],
-                ))
-                .insert(button_node)
-                .observe(action);
-        })),
-    )
+    pub use crate::tokens::{
+        ColorToken, FontToken, ThemedBackground, ThemedBorderColor, ThemedFont, ThemedPalette,
+        ThemedTextColor, Variant,
+    };
+    pub use crate::{LavaUiPlugin, ProgressBar, WorldFollower};
+    pub use bevy::input_focus::AutoFocus;
+    pub use bevy::text::EditableText;
+    pub use bevy::ui::{Checked, InteractionDisabled, Selected};
+    pub use bevy::ui_widgets::{Activate, ValueChange};
 }
 
 // ============================================================================
-// Imperative UIBuilder — kept for dynamic/runtime UI construction.
+// Imperative UIBuilder — frozen; kept for existing downstream code.
 // ============================================================================
 
 /// Fluent UI Builder for creating Bevy UI elements imperatively.
 ///
-/// Best suited for dynamic, data-driven, or runtime-rebuilt UI trees.
-/// For static menus, prefer the bundle-function widgets above with `children![]`.
+/// **Frozen.** Downstream projects still use it, so it keeps working, but it gets no new
+/// widgets: use [`scenes`] for new UI.
 pub struct UIBuilder<'w, 's> {
     commands: Commands<'w, 's>,
     theme: LavaTheme,
@@ -428,205 +115,39 @@ pub struct ButtonBuilder<'a, 'w, 's> {
 }
 
 // ============================================================================
-// Collapsible widget components
-// ============================================================================
-
-/// Marker component for a collapsible UI section.
-/// When collapsed, the content is hidden and only the toggle button is shown.
-#[derive(Component, Clone, Debug, Default)]
-pub struct Collapsible {
-    pub collapsed: bool,
-    pub label: String,
-}
-
-impl Collapsible {
-    pub fn new(label: impl Into<String>) -> Self {
-        Self {
-            collapsed: false,
-            label: label.into(),
-        }
-    }
-
-    pub fn collapsed(label: impl Into<String>) -> Self {
-        Self {
-            collapsed: true,
-            label: label.into(),
-        }
-    }
-}
-
-/// Marker for the toggle button that collapses/expands a Collapsible section.
-///
-/// Derives [`FromTemplate`] rather than `Default` + `Clone` because of the [`Entity`]
-/// field: that is what lets `bsn!` resolve a `#Name` reference into the real entity at
-/// spawn time (`CollapseToggleButton { target: #Section }`).
-#[derive(Component, Debug, FromTemplate)]
-pub struct CollapseToggleButton {
-    pub target: Entity,
-}
-
-/// Marker for the content container inside a Collapsible section.
-///
-/// See [`CollapseToggleButton`] for why this derives [`FromTemplate`].
-#[derive(Component, Debug, FromTemplate)]
-pub struct CollapsibleContent {
-    pub parent: Entity,
-}
-
-/// Where `UIBuilder::with_collapsible`'s toggle button renders relative to its
-/// content -- see `UIBuilder::with_collapsible_toggle_at_bottom`.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(crate) enum CollapsibleTogglePosition {
-    Top,
-    Bottom,
-}
-
-// ============================================================================
-// Progress bar widget
-// ============================================================================
-
-/// Component that drives the fill percentage of a [`progress_bar`] widget.
-/// Change `value` (0.0–1.0) and the `sync_progress_bars` system will update the inner fill node.
-#[derive(Component, Clone, Debug, Default)]
-pub struct ProgressBar {
-    /// Fill fraction, clamped to `0.0..=1.0`.
-    pub value: f32,
-    pub fill_color: Color,
-}
-
-/// Marker placed on the inner fill node spawned by [`progress_bar`].
-#[derive(Component, Clone, Debug, Default)]
-pub struct ProgressBarFill;
-
-// ============================================================================
-// WorldFollower — UI node that tracks a world-space entity's screen position
-// ============================================================================
-
-/// Attach to a UI node to make it follow `target` in screen space. The follower system
-/// makes the node `PositionType::Absolute` itself. `offset` is applied in UI pixels
-/// relative to the projected position, so `-width / 2` centres a node over its target.
-/// The follower despawns when its target does.
-#[derive(Component, Debug, FromTemplate)]
-pub struct WorldFollower {
-    pub target: Entity,
-    pub offset: Vec2,
-}
-
-/// Spawn a horizontal progress bar with an optional [`ProgressBar`] component for dynamic updates.
-///
-/// `value` is the initial fill fraction (0.0–1.0).
-pub fn progress_bar(
-    value: f32,
-    width: f32,
-    height: f32,
-    fill_color: Color,
-    bg_color: Color,
-) -> impl Bundle {
-    let pct = value.clamp(0.0, 1.0) * 100.0;
-    (
-        Name::new("ProgressBar"),
-        ProgressBar { value, fill_color },
-        Node {
-            width: px(width),
-            height: px(height),
-            overflow: Overflow::clip(),
-            ..default()
-        },
-        BackgroundColor(bg_color),
-        Children::spawn(SpawnWith(move |parent: &mut ChildSpawner| {
-            parent.spawn((
-                Name::new("ProgressBarFill"),
-                ProgressBarFill,
-                Node {
-                    width: percent(pct),
-                    height: percent(100.0),
-                    ..default()
-                },
-                BackgroundColor(fill_color),
-            ));
-        })),
-    )
-}
-
-// ============================================================================
-// Free-function helpers for raw ChildSpawner contexts
-// ============================================================================
-
-/// Spawn a selectable list-item row inside a `with_children` closure.
-///
-/// Use this inside `commands.entity(container).with_children(|parent| { ... })`
-/// when you can't use the `UIBuilder` API. For UIBuilder contexts prefer
-/// `ui.list_item(name, selected, handler)`.
-pub fn spawn_list_item<M>(
-    parent: &mut ChildSpawnerCommands<'_>,
-    name: impl Into<String>,
-    selected: bool,
-    handler: impl IntoObserverSystem<Activate, M>,
-) where
-    M: 'static,
-{
-    let bg = if selected {
-        Color::srgba(0.15, 0.40, 0.20, 0.95)
-    } else {
-        Color::srgba(0.07, 0.12, 0.09, 0.85)
-    };
-    let tc = if selected {
-        Color::srgb(0.9, 1.0, 0.9)
-    } else {
-        Color::srgb(0.65, 0.80, 0.65)
-    };
-    parent
-        .spawn((
-            Node {
-                width: percent(100.0),
-                padding: UiRect::axes(px(6.0), px(4.0)),
-                border_radius: BorderRadius::all(px(3.0)),
-                ..default()
-            },
-            BackgroundColor(bg),
-            InteractionPalette {
-                none: bg,
-                hovered: Color::srgba(0.20, 0.50, 0.28, 0.95),
-                pressed: Color::srgba(0.12, 0.32, 0.18, 1.0),
-            },
-            bevy::picking::hover::Hovered::default(),
-            bevy::ui_widgets::Button,
-        ))
-        .with_child((
-            Text::new(name.into()),
-            TextFont::default().with_font_size(11.0),
-            TextColor(tc),
-        ))
-        .observe(handler);
-}
-
-// ============================================================================
 // Plugin
 // ============================================================================
 
-/// Plugin that registers generic UI systems for collapsible sections,
-/// scroll handling, and interaction palette color changes.
-/// Add this plugin to your app to get these systems automatically.
+/// Everything the library needs at runtime: theme tokens and variants, interaction
+/// palettes, the form controls, keyboard / gamepad navigation and the focus ring,
+/// tooltips / toasts / dialogs, collapsibles, scrolling, meters, responsive layout,
+/// world followers and UI scaling.
+///
+/// Bindings ([`bind`]) and screens ([`screens`]) are generic over your types, so they are
+/// registered per type: `app.bind_resource::<Hud>()`, `app.add_screen(Menu::Main, menu)`.
 pub struct LavaUiPlugin;
 
 impl Plugin for LavaUiPlugin {
     fn build(&self, app: &mut App) {
         app.insert_resource(UiScale(1.0))
+            .add_plugins((
+                tokens::ThemeTokensPlugin,
+                controls::ControlsPlugin,
+                focus::FocusPlugin,
+                overlay::OverlayPlugin,
+                drag::DragPlugin,
+            ))
             // Collapsing is driven by the `Activate` event, so it is an observer rather
             // than a system in the `Update` set.
             .add_observer(systems::toggle_collapsible_on_activate)
             .add_systems(
                 Update,
                 (
-                    // Tokens resolve before the palette turns into a BackgroundColor.
-                    (
-                        tokens::apply_theme_tokens,
-                        systems::apply_interaction_palette,
-                    )
-                        .chain(),
+                    systems::apply_interaction_palette.after(tokens::ThemeSystems),
                     systems::handle_scroll_input,
                     systems::update_collapsible_visibility,
                     systems::sync_progress_bars,
+                    responsive::apply_responsive,
                     adapt_ui_scale,
                 ),
             )
@@ -645,6 +166,5 @@ fn adapt_ui_scale(
     for event in message_reader.read() {
         let base_width = theme.as_ref().map_or(1920.0, |t| t.ui_width);
         ui_scale.0 = (event.width / base_width).max(0.5);
-        info!("Ui scale: {}", ui_scale.0);
     }
 }

@@ -4,6 +4,7 @@ use bevy::prelude::*;
 use bevy::ui::Pressed;
 use bevy::ui_widgets::Activate;
 
+use crate::media::PaletteTintsImage;
 use crate::{
     CollapseToggleButton, Collapsible, CollapsibleContent, InteractionPalette, ProgressBar,
     ProgressBarFill, WorldFollower,
@@ -225,6 +226,9 @@ fn follower_axis(origin: f32, viewport_pos: f32, offset: f32, ui_scale: f32) -> 
 /// [`Interaction`] is still honoured as a fallback, so a palette on an entity built with
 /// the legacy `bevy_ui::widget::Button` keeps working.
 ///
+/// With [`PaletteTintsImage`] the palette tints the entity's `ImageNode` instead of its
+/// background, which is how nine-slice skinned buttons follow the theme.
+///
 /// The query is unfiltered on purpose. `Pressed` is a marker that is *removed* on
 /// release, and removal is invisible to `Changed`/`Added` filters, so the state is
 /// recomputed every frame instead. The write is guarded by an equality check, so change
@@ -243,10 +247,12 @@ pub fn apply_interaction_palette(
         Option<&Hovered>,
         Has<Pressed>,
         Option<&Interaction>,
-        &mut BackgroundColor,
+        Option<&mut BackgroundColor>,
+        Option<&mut ImageNode>,
+        Has<PaletteTintsImage>,
     )>,
 ) {
-    for (palette, hovered, pressed, interaction, mut bg) in &mut query {
+    for (palette, hovered, pressed, interaction, bg, image, tints_image) in &mut query {
         // `Hovered`/`Pressed` when present; otherwise fall back to the legacy
         // `Interaction`, so an entity built with `bevy_ui::widget::Button` (which requires
         // `Interaction` but not `Hovered`) still gets its colours.
@@ -259,7 +265,14 @@ pub fn apply_interaction_palette(
         } else {
             palette.none
         };
-        if bg.0 != target {
+        // A skinned widget's palette tints its image; its background stays clear.
+        if tints_image && let Some(mut image) = image {
+            if image.color != target {
+                image.color = target;
+            }
+        } else if let Some(mut bg) = bg
+            && bg.0 != target
+        {
             bg.0 = target;
         }
     }

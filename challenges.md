@@ -5,8 +5,29 @@ Source: [10 Challenges for Bevy UI Frameworks — bevyengine/bevy#11100](https:/
 thread's comments, e.g. [haalka](https://github.com/databasedav/haalka/tree/main/examples)
 (challenges 1, 2, 4).
 
-Examples here: 1 `game_menu`, 2 `inventory`, 3 `health_bar`, 6 `hud`, 8 `scoreboard`,
-9 `dark_light_theme`. Not started: 4, 5, 7.
+## Status
+
+| # | challenge | example | lines | notes |
+|---|---|---|---|---|
+| 1 | Game menu | `game_menu` | 115 | screens, slider, toggle, dropdown; mouse, keyboard and controller with a focus ring |
+| 2 | Inventory | `inventory` | 107 | item images + counts, drag to swap, tooltips |
+| 3 | Health bar | `health_bar` | 156 | world-space nameplate bound to the `Health` component; most lines are the 3D scene |
+| 4 | Responsive menu | `responsive_menu` | 72 | nine-slice skinned buttons, image moves above at 400 px |
+| 5 | Character editor | `character_editor` | 158 | name input, highlighted choices, scrolling colour list, 3D preview |
+| 6 | HUD | `hud` | 123 | minimap image, anchored corners, everything bound to one resource |
+| 7 | Bug report form | `bug_report` | 81 | dropdown, single- and multi-line input (Bevy's editing: cursor, selection, clipboard) |
+| 8 | Scoreboard | `scoreboard` | 137 | auto-sized table, avatar images, rebuilt from `Player` entities |
+| 9 | Dark/light theme | `dark_light_theme` | 80 | dark, light and accent-derived presets switched live |
+| 10 | Design specification | — | — | still no open spec to follow |
+
+Line counts include doc comments and, for 3 and 5, the 3D scene setup. None of the
+examples hardcodes a UI colour: the remaining `Color::` literals are 3D materials and the
+accent colours that `LavaTheme::from_accent` derives a theme from.
+
+Screenshots of each, taken at startup with Bevy's CI screenshot tool, are in
+`docs/screenshots/`. Interaction (focus movement, drag feel, typing, resizing past the
+breakpoint) has to be checked by running them; the headless tests cover state and
+structure only.
 
 ## 1. Game Menu
 

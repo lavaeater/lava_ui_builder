@@ -21,8 +21,8 @@ one tree is supported and expected — §3 has the bridge.
 
 ## 1. Mandatory: what breaks on the version bump
 
-Four things. Two are compile errors (loud), two are behavioural (silent — these are the
-dangerous ones).
+Four things for every consumer (two compile errors, two silent behaviour changes — the
+dangerous ones), plus §1.5 for code already on the scene API.
 
 ### 1.1 `systems::handle_collapse_toggle` no longer exists — compile error
 
@@ -105,6 +105,33 @@ grep -rn 'lava_ui_builder.*feathers' Cargo.toml
 Remove `features = ["feathers"]` from the dependency line if present. The feathers helpers
 (`feathers_button`, `feathers_button_primary`, …) still compile unconditionally.
 
+### 1.5 Scene-API changes from the game-kit round (2026-11) — only if you use `scenes::`
+
+The bundle and builder APIs are untouched by this round. Code on the scene API may hit:
+
+* **`scenes::side_panel(width, bg)` is now `side_panel(width)`** — compile error. The
+  background is the theme's `PanelBg` token; patch `ThemedBackground(..)` for another.
+* **`scenes::button` is `min_width: 150` instead of `width: 150`** — it grows to fit its
+  caption, and stretches inside a `scenes::card`. Patch `Node { width: px(150) }` back if
+  a layout depended on the fixed width.
+* **`button`, `list_item`, `icon_button`, `delete_button` and `section_label` are themed
+  now.** Their colours come from `LavaTheme` (button variants, `surface.text_muted`)
+  instead of constants, so they look different with a custom theme and follow theme
+  swaps. A `scenes::button` carries a `Variant` instead of a `ThemedPalette`; code that
+  queried `ThemedPalette` on buttons should query `Variant`.
+* **Lava widgets are focusable and the arrow keys / D-pad move focus between them.**
+  `LavaUiPlugin` now adds Bevy's `TabNavigationPlugin` and `DirectionalNavigationPlugin`
+  (unless already added) and draws a focus ring. Navigation only *moves* existing focus by
+  default, so a game steering with the arrows is unaffected until something has focus;
+  turn it off entirely with `UiNavigation { enabled: false, .. }`. Escape / gamepad B
+  trigger `NavigateBack`, which does nothing unless you registered `screen_back`.
+* **Gamepad A activates the focused widget**, and the pointer shows a tooltip for entities
+  with `Tooltip`.
+
+```bash
+grep -rn 'scenes::side_panel\|ThemedPalette' src/
+```
+
 ---
 
 ## 2. What gets better with no work from you
@@ -131,6 +158,21 @@ even though they are fixes:
   theme. Existing `progress_bar(.., Color, Color)` calls are unchanged; switch the ones
   whose colours are theme rather than meaning. A theme built with `..LavaTheme::default()`
   needs no change.
+* **New, opt-in: the game-kit layer** (see `roadmap.md` and the README tour). None of it
+  needs a change to existing code:
+  * theme roles `LavaTheme.surface` / `.controls`, button `Variant`s, `title`/`small`
+    font sizes, presets `LavaTheme::{dark, light, from_accent}`;
+  * bindings (`app.bind_resource::<R>()` + `@scenes::bind_text(..)` and friends) that
+    replace hand-written sync systems;
+  * state-driven screens (`app.add_screen(..)`, `go_to`, `Back`, `screen_back`);
+  * themed controls on Bevy's headless widgets: `slider`, `checkbox`, `toggle`,
+    `choice`, `cycle`, `select`, `text_input`, `text_area`;
+  * tooltips, toasts, `confirm` dialogs, drag and drop, images / nine-slice skins,
+    `Responsive` layout, HUD `anchored` corners, `table`, `card`, `screen`.
+* **New theme fields** (`surface`, `controls`, `button.secondary` .. `button.disabled`,
+  `text.title_size`, `text.small_size`) have defaults; themes built with
+  `..LavaTheme::default()` or `..t.clone()` need no change. `InteractionPalette` keeps
+  exactly its three fields.
 
 ---
 

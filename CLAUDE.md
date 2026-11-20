@@ -11,39 +11,50 @@ cargo build
 # Lint (the pedantic set in [lints.clippy] is kept in sync with aliens-vs-suburbia by hand)
 cargo clippy --all-targets --all-features
 
-# Test (--all-features so the serde-gated crawl code is covered too)
+# Test (--all-features so the serde-gated crawl code is covered too). Slow the first time:
+# it links every example against full bevy.
 cargo test --all-features
-cargo test --test scenes                 # one integration file (scenes | crawl)
+cargo test --test widgets                # one integration file (scenes | widgets | crawl)
 cargo test follower_axis                 # tests whose name contains the filter
 
 # Library alone, with the crate's own trimmed bevy features (see Constraints)
 cargo check --lib
 
-# Run an example (all are on the scene API except basic_layout)
-cargo run --example bsn_layout          # smallest scene example; start here
-cargo run --example dark_light_theme    # live theme switching via tokens
-cargo run --example inventory           # inline on(..) observers, drag and drop
+# Examples: one per UI challenge (see challenges.md), plus a few API demos
+cargo run --example game_menu           # 1: screens, slider/toggle/select, focus nav
+cargo run --example inventory           # 2: images, drag and drop, tooltips
+cargo run --example health_bar          # 3: WorldFollower + component bindings, 3D
+cargo run --example responsive_menu     # 4: nine-slice skinned buttons, breakpoints
+cargo run --example character_editor    # 5: 3D preview, choices, scroll, text input
+cargo run --example hud                 # 6: anchored corners, resource bindings
+cargo run --example bug_report          # 7: dropdown, text input, text area, toasts
+cargo run --example scoreboard          # 8: table, avatars, rebuild from ECS
+cargo run --example dark_light_theme    # 9: theme presets switched live
+cargo run --example buttons             # variants, states, feathers side by side
+cargo run --example bsn_layout          # small scene example
 cargo run --example complex_example     # collapsibles, scrolling, runtime rebuild
-cargo run --example health_bar          # world-space nameplate (WorldFollower + meter), 3D
 cargo run --example basic_layout        # the OLD APIs, kept as the unmigrated reference
+
+# Regenerate the example images in assets/ (stdlib-only python)
+python3 tools/make_assets.py assets
 ```
 
 `bacon.toml` wraps all of the above as jobs (nightly comes from `../rust-toolchain.toml`;
 caching is kache, set up in `~/.cargo/config.toml`; compiler flags such as `-Z threads`
-and `hint-mostly-unused` live in `../.cargo/config.toml`, never in bacon or the shell env,
+live in `../.cargo/config.toml`, never in bacon or the shell env,
 so every cargo invocation shares one cache):
 `bacon` (clippy-all by default), or press `y` clippy, `t` test, `e` example,
 `r` check-all-examples; `bacon ex -- <name>` runs one example by name. Keep every job on
 the same flags — a job with different ones re-fingerprints the whole bevy tree.
 
-`e` runs whichever example is hardcoded in `[jobs.example]` (currently `basic_layout`).
-
-Tests: unit tests in `src/systems.rs` (`follower_axis`) and `src/crawl.rs`
-(`CrawlProgress` timing); headless integration tests in `tests/scenes.rs` (spawn each BSN
-scene, assert the entity tree, check `#Name` references resolve) and `tests/crawl.rs`
-(drive `CrawlPlugin`). New scene tests should reuse the `test_app()` there:
-`MinimalPlugins + AssetPlugin + ScenePlugin` plus `apply_theme_tokens` — no window or
-renderer. Visual behaviour is still validated by running the examples.
+Tests: unit tests in `src/systems.rs` (`follower_axis`) and `src/crawl.rs`; headless
+integration tests in `tests/scenes.rs` (entity trees, `#Name` resolution, tokens),
+`tests/widgets.rs` (variants/states, presets, bindings, controls, screens, dialogs, toasts)
+and `tests/crawl.rs`. They use `MinimalPlugins + AssetPlugin + ScenePlugin` plus
+`tokens::ThemeTokensPlugin` (and `controls::ControlsPlugin` / `overlay::OverlayPlugin` as
+needed) — no window or renderer, so `LavaUiPlugin` itself (picking, input, focus) is not
+added. Focus movement, layout and looks are validated by running the examples. The README
+code block is compiled as a doctest (`ReadmeDoctests` in `lib.rs`).
 
 ## Constraints
 
@@ -54,34 +65,56 @@ renderer. Visual behaviour is still validated by running the examples.
 - **The library's bevy is trimmed** (`default-features = false`, only `ui`, `bevy_feathers`,
   `bevy_scene`), while `[dev-dependencies]` pulls full bevy for examples and tests. So code
   using a bevy module outside those features compiles under `cargo test`/examples but breaks
-  `cargo check --lib` and downstream builds. Don't widen the feature list casually: the
-  Cargo.toml comment explains the Android activity conflict with the `civilization` game.
+  `cargo check --lib` and downstream builds. `ui` already brings `bevy_state`,
+  `bevy_input_focus`, `bevy_ui_widgets`, picking and text editing. Don't widen the feature
+  list casually: the Cargo.toml comment explains the Android activity conflict with the
+  `civilization` game.
 - **Downstream consumers** pull this crate in as a `lava_ui_builder/` subdirectory (a git
   submodule): `../aliens-vs-suburbia` (with `serde`) and `../civilization` (as a workspace
-  member). Public API changes need a
-  matching entry in `migration-guide.md`.
+  member). Public API changes need a matching entry in `migration-guide.md`. They build
+  `InteractionPalette { none, hovered, pressed }` literally (do not add fields to it) and
+  themes with `..LavaTheme::default()` / `..t.clone()` (adding theme fields is fine).
+  About 30 downstream files use `UIBuilder`: it and the bundle API are frozen, not removed.
 
 ## Architecture
 
-`lava_ui_builder` is a Bevy 0.20 UI library. It provides three APIs; the scene API is the
-one to use for new code. See `bsn-migration.md` for how they relate and what moved, and
-`migration-guide.md` when updating a *downstream* project that depends on this crate.
+`lava_ui_builder` is a game UI kit for Bevy 0.20. Plan and rationale: `roadmap.md`.
+Three APIs live here; the **scene API** is the one to use and the only one that gets new
+widgets. `bsn-migration.md` explains how the APIs relate; `migration-guide.md` is for
+updating a *downstream* project.
 
-**The one rule that bites:** `apply_theme_tokens` owns `TextColor` and
-`InteractionPalette` on any entity carrying a token, and rewrites them every frame. Never
-write `BackgroundColor` on an entity that has an `InteractionPalette` — swap the palette
-instead. Themed widgets (`label`, `header`, `button`, `collapsible`) cannot be recoloured
-by patching; use the explicit ones (`text`, `button_colored`, `list_item`, `icon_button`)
-when the colour is content rather than theme.
+**The one rule that bites:** `apply_theme_tokens` owns `TextColor`, `BackgroundColor`,
+`BorderColor`, `TextFont` and `InteractionPalette` on any entity carrying a token or a
+`Variant`, and rewrites them every frame. Never write those components on such an entity;
+patch the token / variant instead, or move a state marker (`Selected`, `Checked`,
+`InteractionDisabled`). Use the explicit widgets (`text`, `button_colored`,
+`progress_bar`) only when the colour is content rather than theme.
 
-### Scene API (`src/scenes.rs`) — preferred
-Free functions (`ui_root`, `header`, `label`, `button`, `progress_bar`, `collapsible`)
-that return `impl Scene`, built with the `bsn!` macro. They compose inside `Children [..]`
-and callers override single fields by *patching* (`@scenes::button("Play") Node { width: px(220) }`)
-rather than by passing options. Widgets take **no theme argument** — colors and fonts come
-from `src/tokens.rs` (see below).
+### Module map
+| module | what |
+|---|---|
+| `theme.rs` | `LavaTheme` + sub-themes (`button` with variant `ButtonColors`, `text`, `meter`, `surface`, `controls`), presets `dark/light/from_accent`, `with_font` |
+| `tokens.rs` | `ColorToken`/`FontToken`, the `Themed*` components, `Variant` + `VariantText`, `apply_theme_tokens` (in `ThemeSystems`), `ThemeTokensPlugin` |
+| `scenes/` | scene functions: `layout.rs`, `text.rs`, `buttons.rs` (incl. `focusable()`), `meters.rs`; `mod.rs` re-exports everything below so all widgets are `scenes::*` |
+| `controls.rs` | slider, checkbox/toggle, choice (radio group of buttons), cycle, select (dropdown), text_input/text_area — themed looks on `bevy::ui_widgets` |
+| `bind.rs` | `bind_*` scene fns + `BindAppExt::{bind_resource, bind_component}` |
+| `screens.rs` | `ScreenAppExt::{add_screen, screen_back}`, `GoTo<S>` / `go_to`, `Back` |
+| `focus.rs` | arrow/D-pad/stick navigation, gamepad A/B, `NavigateBack`, focus ring, scroll-into-view, `UiNavigation` settings |
+| `overlay.rs` | `Tooltip`, `Toast` (an `Event`), `confirm` dialogs + `DialogResult` |
+| `media.rs` | `image`, `icon`, `nine_slice`, `skinned_button` (`PaletteTintsImage`) |
+| `drag.rs` | `draggable`, `drop_target`, `Dropped` |
+| `responsive.rs` | `Responsive { breakpoint, narrow: NarrowLayout }`, `stack_below`, `full_width_below` |
+| `components.rs` | `InteractionPalette`, collapsible parts, `ProgressBar`, `WorldFollower` |
+| `systems.rs` | palette application (incl. image tint), scrolling, collapsibles, progress bars, world followers |
+| `bundles.rs`, `builder.rs`, `button_builder.rs` | the frozen bundle-function and `UIBuilder` APIs |
+| `crawl.rs` | story crawls (`CrawlPlugin`, separate from `LavaUiPlugin`) |
 
-Rules when writing them:
+`lib.rs` holds module declarations, root re-exports (downstream paths like
+`lava_ui_builder::TextTheme` must keep working), the `prelude`, the `UIBuilder` struct
+definitions and `LavaUiPlugin`, which adds the token, controls, focus, overlay and drag
+plugins. Bindings and screens are generic, so they are registered per type by the app.
+
+### Writing scenes
 - calling a scene function inside `bsn!` needs `@`: `Children [ @scenes::label("a") -- @scenes::label("b") HealthText ]`.
   Without `@` it fails with "`impl Scene: Template` is not satisfied"
 - Bevy 0.20 BSN separates entities with `--`; components on one entity are just listed.
@@ -89,77 +122,50 @@ Rules when writing them:
   (instead of `bsn_list! {..}`) still compile but emit deprecation warnings. The tree is
   clean of them; keep it that way
 - a `Scene` is `'static`, so it cannot borrow: copy values into locals before the `bsn!`
-- anything that is not BSN value syntax needs braces — `Text({text})`, not `Text(text.into())`
-- an optional child is `Option<impl SceneList>`: `cond.then(|| bsn_list! {..})`, *not*
-  `bsn!{..}`, because a `Children [..]` slot interpolates a list
-- `on(..)` observers must be `Clone`: capture `Copy` data or clone into the closure
+- anything that is not BSN value syntax needs braces — `Text({text})`, `{Some(x)}`
+- a whole component *value* goes in `~{value}` (how the `bind_*` and `go_to` fns insert
+  generic components); an optional scene goes in `@{option}`; `Option<impl Scene>` and
+  tuples of scenes are scenes too, so `(bsn!{..}, cond.then_some(bsn!{ Selected }))` adds
+  a marker conditionally
+- an optional child is `Option<impl SceneList>`: `cond.then(|| bsn_list! {..})`; a
+  `Children [..]` slot takes a list, so a single scene goes in as `vec![scene]`
+- a `Vec` of children must be one type: give cells a common shape (see `scoreboard.rs`)
+- generic components need a turbofish in BSN (`GoTo::<S>(..)`) and `S: Unpin`; hide that
+  behind a scene fn (`go_to(state)`)
+- `on(..)` observers must be `Clone`: capture `Copy` data or clone into the closure;
+  bindings hold plain `fn` pointers for the same reason
+- a parameter named `on` shadows BSN's `on(..)` — don't
+- interactive widgets include `@focusable()` (TabIndex + `AutoDirectionalNavigation`)
+- every widget is themed: a new colour role is a `LavaTheme` field (in a sub-struct, with a
+  `Default`, also set in `light()`) plus a `ColorToken` variant resolved in
+  `ColorToken::color` — not a `Color` parameter. Check `bevy::ui_widgets` /
+  `bevy::feathers` for existing behaviour before hand-rolling (0.20 has slider, select,
+  menu, text input, checkbox, radio, scroll area, tabs, dialog; no meter)
 
 Runtime rebuilds (e.g. a list whose contents change) go through
-`scenes::replace_children(commands, parent, bsn_list! {..})`. The new children spawn in the
+`scenes::replace_children(commands, parent, list)`. The new children spawn in the
 `SpawnScene` schedule, after `Update`, so the system doing the rebuild cannot query them in
-the same run.
+the same run — and an entity spawned from a scene at `Startup` may not exist yet in the
+first `Update` (see the `Added` check in `scoreboard.rs`).
 
-### Theme tokens (`src/tokens.rs`)
-`ColorToken` / `FontToken` are enums naming the fields of `LavaTheme`. Widgets carry
-`ThemedBackground` / `ThemedTextColor` / `ThemedBorderColor` / `ThemedFont` /
-`ThemedPalette`, and `apply_theme_tokens` resolves them against the resource every frame
-(guarded by equality checks). Swapping the `LavaTheme` resource repaints live UI — no
-rebuild. Patching a bare `TextColor` over a themed widget will **not** stick; patch the
-token instead. Sizes are not tokens: patch `Node`.
+### Bevy 0.20 API notes (things that differ from older docs)
+- picking events are concrete types: `On<PointerPress>`, `On<PointerDragStart>`, …
+  (not `Pointer<Press>`); global observers see every bubbling hop — compare
+  `ev.entity` with `ev.original_event_target()`
+- resources are components: a generic `ResMut<R>` needs `R: Resource + Component<Mutability = Mutable>`;
+  `NextState<S>::set` needs `S: FreelyMutableState`
+- `Query::iter_many` yields `Result`s
+- `SliderValue` is immutable: insert a new one to change it
+- radio groups consume all four arrow keys when the *group* is focused, which is why
+  `choice` makes each option focusable instead
 
-**Every new widget must be themed.** A new colour role means a `LavaTheme` field (grouped
-in a sub-struct like `MeterTheme`, with a `Default`) plus a `ColorToken` variant resolved in
-`ColorToken::color` — not a `Color` parameter. Downstream themes are built with
-`..LavaTheme::default()`, so adding fields is non-breaking. Also check `bevy::ui_widgets` /
-`bevy::feathers` for an existing widget before hand-rolling one: 0.20 ships slider, select,
-menu, text input, checkbox, radio, scroll area, tabs and dialog; no progress bar or meter
-yet, which is why `meter` exists here.
-
-### Bundle-function API (`src/lib.rs`)
-Free functions (`ui_root`, `header`, `label`, `themed_button`, etc.) that return
-`impl Bundle` and compose with Bevy's `children![]` macro. Being superseded by the scene
-API; still used by most examples.
-
-### Imperative builder API (`src/builder.rs`, `src/button_builder.rs`)
-`UIBuilder` — an owned struct holding a `Commands` reference, a `current_entity`, a `parent_stack` (VecDeque), and a `LavaTheme`. Navigation is done with `.child()` / `.parent()`. Buttons are created via `.add_themed_button()` / `.add_button_observe()`. Returns `ButtonBuilder` for further configuration inside a closure.
-
-### Theme system
-`LavaTheme` is a Bevy `Resource` containing `ButtonTheme` and `TextTheme`. All hardcoded colors/sizes in the builder methods come from the theme. `ui_width` / `ui_height` drive `adapt_ui_scale`. Insert `LavaTheme` as a resource before building UI; if absent, `UIBuilder::new()` falls back to `Default`.
-
-### Key types
-- `InteractionPalette` — component with `none/hovered/pressed` colors; applied by `systems.rs`.
-  Scene widgets fill it from a `ThemedPalette` rather than setting it directly
-- `TextStyle` — optional style overrides (size, color, font, justify, line_break) passed to `with_text`; use `TextStyle::size()`, `::color()`, `::size_color()` convenience constructors
-- `Collapsible` / `CollapsibleContent` / `CollapseToggleButton` — components for collapsible sections; the toggle system lives in `systems.rs`
-- feathers helpers: `bevy_feathers` is an unconditional dependency, so
-  `feathers_button_with_overrides()` and friends always compile — there is no feature to
-  enable (the no-op `feathers` feature was removed). `.text()`, `.font_size()` and
-  `.text_color()` are no-ops on that builder. In scenes, use `@FeathersButton` directly;
-  see `examples/buttons.rs`.
-- Components used inside `bsn!` need `Default + Clone`, or `#[derive(FromTemplate)]` when
+### Legacy notes
+- `apply_interaction_palette` reads `Hovered`/`Pressed` (the `bevy_ui_widgets` state) and
+  falls back to the legacy `Interaction`; use `bevy::ui_widgets::Button` + `Hovered`
+- `toggle_collapsible_on_activate` is a global observer on `Activate`
+- feathers helpers: `bevy_feathers` is an unconditional dependency (no feature);
+  `.text()`, `.font_size()`, `.text_color()` are no-ops on `feathers_button_with_overrides`
+- components used inside `bsn!` need `Default + Clone`, or `#[derive(FromTemplate)]` when
   they hold an `Entity` (resolved from a `#Name`) or an asset handle
-
-### Crawls (`src/crawl.rs`)
-Story text over the game: `CrawlStyle::Scroll { tilt }` (rolls up; `project` lays the
-lines on a tilted plane so they shrink without gapping) or `Typewriter` (a bottom box, one
-page per paragraph, the untyped rest kept as an invisible `TextSpan` so words never jump
-lines). `CrawlPlugin` (separate from `LavaUiPlugin`, add it yourself) owns a `CrawlQueue`;
-hosts send `ShowCrawl` / `AdvanceCrawl` / `ClearCrawls` and read `CrawlFinished`. Runs on
-`Time<Real>`. Text colours come from `LavaTheme.text` as plain `TextColor` (not tokens,
-because the crawl fades them). `CrawlProgress` is the pure timing state, unit-tested;
-`tests/crawl.rs` drives the plugin headless. `CrawlSpec` is serde-able behind the
-`serde` feature. `cargo run --example crawl` to see it.
-
-### `systems.rs`
-`LavaUiPlugin` (defined in `lib.rs`) registers:
-- `apply_interaction_palette` — applies `InteractionPalette` colors. Reads `Hovered` and
-  `Pressed` (the `bevy_ui_widgets` state), **not** the legacy `Interaction` component:
-  `ui_widgets::Button` does not require `Interaction`, so a palette driven by it silently
-  never fired. Use `bevy::ui_widgets::Button` + `Hovered` on anything with a palette.
-- `apply_theme_tokens` (in `tokens.rs`) — resolves theme tokens; `.chain()`-ed to run
-  *before* `apply_interaction_palette`, since tokens produce the palette
-- `toggle_collapsible_on_activate` — a **global observer** on `Activate`, not a system,
-  so toggles work however they were spawned and respond to ENTER/SPACE
-- `update_collapsible_visibility` — shows/hides `CollapsibleContent`, updates the arrow
-- `handle_scroll_input`, `sync_progress_bars`, `world_follower_system`
-- `adapt_ui_scale` (in `lib.rs`) — rescales UI on window resize (uses `LavaTheme.ui_width`)
+- crawls: `CrawlPlugin` owns a `CrawlQueue`; text colours are plain `TextColor` (the crawl
+  fades them), not tokens; `CrawlProgress` is the unit-tested timing core

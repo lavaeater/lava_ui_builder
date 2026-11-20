@@ -128,3 +128,15 @@ path = "examples/crawl.rs"
 [[example]]
 name = "health_bar"
 path = "examples/health_bar.rs"
+
+[[example]]
+name = "responsive_menu"
+path = "examples/responsive_menu.rs"
+
+[[example]]
+name = "character_editor"
+path = "examples/character_editor.rs"
+
+[[example]]
+name = "bug_report"
+path = "examples/bug_report.rs"

@@ -95,7 +95,7 @@ fn a_button_is_a_headless_button_with_a_palette_and_a_text_child() {
     // started from.
     let palette = world
         .get::<InteractionPalette>(entity)
-        .expect("ThemedPalette requires and fills an InteractionPalette");
+        .expect("the button's Variant requires and fills an InteractionPalette");
     let theme = LavaTheme::default();
     assert_eq!(palette.none, theme.button.bg);
     assert_eq!(palette.hovered, theme.button.bg_hovered);
@@ -246,12 +246,9 @@ fn a_selected_list_item_uses_the_selected_palette() {
         a.none, b.none,
         "selection has to be visible without hovering"
     );
-    // Not theme-driven: the token system must leave these alone.
-    assert!(
-        world
-            .get::<lava_ui_builder::ThemedPalette>(unselected)
-            .is_none()
-    );
+    // Themed through a variant and Bevy's `Selected` marker, not a fixed palette.
+    assert!(world.get::<lava_ui_builder::Variant>(unselected).is_some());
+    assert!(world.get::<bevy::ui::Selected>(selected).is_some());
 }
 
 #[test]
@@ -324,7 +321,8 @@ fn replace_children_swaps_the_contents_and_keeps_the_parent() {
 }
 
 /// A themed widget cannot be recoloured by patching, because the token system repaints
-/// it; `button_colored` is the escape hatch, and it must not carry the token at all.
+/// it; `button_colored` is the escape hatch, and it must carry neither a token nor a
+/// variant.
 #[test]
 fn a_coloured_button_is_not_repainted_by_the_theme() {
     let mut app = test_app();
@@ -341,6 +339,7 @@ fn a_coloured_button_is_not_repainted_by_the_theme() {
             .get::<lava_ui_builder::ThemedPalette>(entity)
             .is_none()
     );
+    assert!(world.get::<lava_ui_builder::Variant>(entity).is_none());
     assert_eq!(world.get::<InteractionPalette>(entity).unwrap().none, red);
 }
 
