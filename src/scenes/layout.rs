@@ -4,6 +4,7 @@
 //! They exist because the flex/grid incantations are easy to get subtly wrong, not
 //! because BSN needs them -- `scenes::row(8.0)` is exactly a flex-row `Node`.
 
+use bevy::input_focus::tab_navigation::TabGroup;
 use bevy::prelude::*;
 
 use crate::{ColorToken, ThemedBackground, ThemedBorderColor};
@@ -23,6 +24,7 @@ pub fn ui_root() -> impl Scene {
             flex_direction: FlexDirection::Column,
             row_gap: px(20),
         }
+        TabGroup
         Pickable::IGNORE
     }
 }
@@ -56,6 +58,7 @@ pub fn fullscreen() -> impl Scene {
             width: percent(100),
             height: percent(100),
         }
+        TabGroup
         Pickable::IGNORE
     }
 }
@@ -120,6 +123,7 @@ pub fn anchored(anchor: ScreenAnchor, margin: f32) -> impl Scene {
             padding: {UiRect::all(px(margin))},
             row_gap: px(6),
         }
+        TabGroup
         Pickable::IGNORE
     }
 }

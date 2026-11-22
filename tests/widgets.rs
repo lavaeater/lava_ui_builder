@@ -529,3 +529,78 @@ fn a_toast_appears_and_expires() {
         .count();
     assert_eq!(toasts, 0);
 }
+
+/// Press Tab "at" whatever has focus, the way Bevy's input dispatch would.
+fn press_tab(app: &mut App) {
+    use bevy::input::ButtonState;
+    use bevy::input::keyboard::{Key, KeyboardInput};
+    use bevy::input_focus::{FocusedInput, InputFocus};
+    // A real `Window`: focused input bubbles up to it and stops there.
+    let window = app.world_mut().spawn(Window::default()).id();
+    let target = app.world().resource::<InputFocus>().get().unwrap_or(window);
+    let input = KeyboardInput {
+        key_code: KeyCode::Tab,
+        logical_key: Key::Tab,
+        state: ButtonState::Pressed,
+        text: None,
+        repeat: false,
+        window,
+    };
+    app.world_mut()
+        .trigger(FocusedInput::new(target, input, window));
+    app.update();
+}
+
+fn tab_app() -> App {
+    let mut app = test_app();
+    app.add_plugins((
+        bevy::input::InputPlugin,
+        bevy::input_focus::InputFocusPlugin,
+        lava_ui_builder::focus::FocusPlugin,
+    ));
+    app.finish();
+    app
+}
+
+fn two_buttons() -> impl Scene {
+    bsn! {
+        @scenes::screen()
+        Children [
+            @scenes::button("One") #One
+            --
+            @scenes::button("Two") #Two
+        ]
+    }
+}
+
+#[test]
+fn tab_moves_focus_between_widgets_on_a_screen() {
+    use bevy::input_focus::{FocusCause, InputFocus};
+    let mut app = tab_app();
+    let root = spawn(&mut app, two_buttons());
+    let buttons: Vec<Entity> = app.world().get::<Children>(root).unwrap().iter().collect();
+    // No renderer, so nothing computes visibility, and Tab skips hidden widgets.
+    for entity in [root, buttons[0], buttons[1]] {
+        app.world_mut()
+            .entity_mut(entity)
+            .insert(InheritedVisibility::VISIBLE);
+    }
+    app.world_mut()
+        .resource_mut::<InputFocus>()
+        .set(buttons[0], FocusCause::Navigated);
+    press_tab(&mut app);
+    assert_eq!(app.world().resource::<InputFocus>().get(), Some(buttons[1]));
+}
+
+#[test]
+fn tab_with_nothing_focused_leaves_the_ui_alone() {
+    use bevy::input_focus::InputFocus;
+    let mut app = tab_app();
+    spawn(&mut app, two_buttons());
+    press_tab(&mut app);
+    assert_eq!(
+        app.world().resource::<InputFocus>().get(),
+        None,
+        "Tab is the game's until a widget has focus"
+    );
+}

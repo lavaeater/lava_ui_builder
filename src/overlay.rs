@@ -9,6 +9,7 @@
 //!   lost.", "Quit")).observe(on_answer)`: a modal over a dimmed backdrop. The observer gets
 //!   a [`DialogResult`]; the dialog despawns itself.
 
+use bevy::input_focus::tab_navigation::TabGroup;
 use bevy::input_focus::{AutoFocus, InputFocus, InputFocusVisible};
 use bevy::picking::hover::Hovered;
 use bevy::prelude::*;
@@ -299,6 +300,8 @@ pub fn confirm(
     bsn! {
         @backdrop()
         Dialog
+        // Modal: Tab cycles inside the dialog instead of escaping to the screen under it.
+        TabGroup { modal: true }
         GlobalZIndex(800)
         Children [
             @card()

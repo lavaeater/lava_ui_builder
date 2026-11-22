@@ -99,7 +99,7 @@ patch the token / variant instead, or move a state marker (`Selected`, `Checked`
 | `controls.rs` | slider, checkbox/toggle, choice (radio group of buttons), cycle, select (dropdown), text_input/text_area — themed looks on `bevy::ui_widgets` |
 | `bind.rs` | `bind_*` scene fns + `BindAppExt::{bind_resource, bind_component}` |
 | `screens.rs` | `ScreenAppExt::{add_screen, screen_back}`, `GoTo<S>` / `go_to`, `Back` |
-| `focus.rs` | arrow/D-pad/stick navigation, gamepad A/B, `NavigateBack`, focus ring, scroll-into-view, `UiNavigation` settings |
+| `focus.rs` | Tab (own handler, not Bevy's plugin) and arrow/D-pad/stick navigation under `UiNavigation`, gamepad A/B, `NavigateBack`, focus ring, scroll-into-view, `UiNavigation` settings |
 | `overlay.rs` | `Tooltip`, `Toast` (an `Event`), `confirm` dialogs + `DialogResult` |
 | `media.rs` | `image`, `icon`, `nine_slice`, `skinned_button` (`PaletteTintsImage`) |
 | `drag.rs` | `draggable`, `drop_target`, `Dropped` |

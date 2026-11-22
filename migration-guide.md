@@ -120,11 +120,16 @@ The bundle and builder APIs are untouched by this round. Code on the scene API m
   swaps. A `scenes::button` carries a `Variant` instead of a `ThemedPalette`; code that
   queried `ThemedPalette` on buttons should query `Variant`.
 * **Lava widgets are focusable and the arrow keys / D-pad move focus between them.**
-  `LavaUiPlugin` now adds Bevy's `TabNavigationPlugin` and `DirectionalNavigationPlugin`
-  (unless already added) and draws a focus ring. Navigation only *moves* existing focus by
-  default, so a game steering with the arrows is unaffected until something has focus;
-  turn it off entirely with `UiNavigation { enabled: false, .. }`. Escape / gamepad B
-  trigger `NavigateBack`, which does nothing unless you registered `screen_back`.
+  `LavaUiPlugin` now adds Bevy's `DirectionalNavigationPlugin` (unless already added),
+  handles Tab / Shift+Tab itself and draws a focus ring. Navigation, Tab included, only
+  *moves* existing focus by default, so a game steering with the arrows or binding Tab to
+  something else is unaffected until a widget has focus; turn it off entirely with
+  `UiNavigation { enabled: false, .. }`. Escape / gamepad B trigger `NavigateBack`, which
+  does nothing unless you registered `screen_back`.
+* **`ui_root`, `screen`, `backdrop`, `fullscreen` and `anchored` carry a `TabGroup`**, and
+  a `confirm` dialog a modal one. Bevy's `TabNavigationPlugin` is *not* added any more:
+  it warned "No tab groups found" on every Tab press and grabbed focus from nothing. If
+  your app adds it itself (or adds feathers, which does), lava leaves Tab to it.
 * **Gamepad A activates the focused widget**, and the pointer shows a tooltip for entities
   with `Tooltip`.
 

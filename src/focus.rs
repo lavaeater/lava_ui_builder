@@ -5,12 +5,20 @@
 //!
 //! | input                              | does                                          |
 //! |------------------------------------|-----------------------------------------------|
-//! | Tab / Shift+Tab                    | next / previous (Bevy's tab navigation)       |
+//! | Tab / Shift+Tab                    | next / previous, in `TabIndex` order          |
 //! | arrows, D-pad, left stick          | move to the nearest widget in that direction  |
 //! | left/right on a slider or cycle    | change its value instead                      |
 //! | ENTER / SPACE                      | activate (Bevy's widgets handle these)        |
 //! | gamepad A                          | activate, toggle or pick the focused widget   |
 //! | Escape, gamepad B, a `Back` button | close a dropdown, else cancel a dialog, else [`NavigateBack`] |
+//!
+//! Tab follows the same [`UiNavigation`] rules as the arrows: with nothing focused it does
+//! nothing (unless `start_from_nothing`), so a game can bind Tab to something else while a
+//! HUD is up. Tab order comes from Bevy's `TabGroup`s; `ui_root`, `screen`, `fullscreen`
+//! and `anchored` are groups, and a `confirm` dialog is a modal one (Tab stays inside it).
+//! Bevy's own `TabNavigationPlugin` is not used: it grabs focus from nothing and warns on
+//! every Tab when a screen has no `TabGroup`. If the app adds it anyway (feathers does),
+//! lava leaves Tab to it.
 //!
 //! The focused widget gets an `Outline` in [`crate::ColorToken::FocusRing`] while focus
 //! is "visible" -- after keyboard or gamepad input, not after a mouse click, the same rule
@@ -19,10 +27,14 @@
 //! The ring is an `Outline` the module owns: an entity that should keep an outline of its
 //! own will lose it while focused.
 
+use bevy::input::ButtonState;
 use bevy::input::gamepad::{Gamepad, GamepadButton};
+use bevy::input::keyboard::KeyboardInput;
 use bevy::input_focus::directional_navigation::DirectionalNavigationPlugin;
-use bevy::input_focus::tab_navigation::TabNavigationPlugin;
-use bevy::input_focus::{FocusCause, InputFocus, InputFocusVisible};
+use bevy::input_focus::tab_navigation::{
+    NavAction, TabNavigation, TabNavigationError, TabNavigationPlugin,
+};
+use bevy::input_focus::{FocusCause, FocusedInput, InputFocus, InputFocusVisible};
 use bevy::math::CompassOctant;
 use bevy::picking::events::PointerPress;
 use bevy::prelude::*;
@@ -52,8 +64,8 @@ pub struct NavigateBack;
 /// Games that steer with the arrow keys or the stick while a HUD is up should care about
 /// `start_from_nothing`: when it is on, a direction pressed while *nothing* has focus
 /// grabs the first widget on screen. That is off by default -- menus give their first
-/// button `AutoFocus` instead -- so in-game movement never wakes the UI. Set `enabled:
-/// false` to switch all of it off (Tab navigation stays, it is Bevy's).
+/// button `AutoFocus` instead -- so in-game movement never wakes the UI. The same goes for
+/// Tab. Set `enabled: false` to switch all of it off.
 #[derive(Resource, Clone, Copy, Debug)]
 pub struct UiNavigation {
     pub enabled: bool,
@@ -78,9 +90,6 @@ pub struct FocusPlugin;
 
 impl Plugin for FocusPlugin {
     fn build(&self, app: &mut App) {
-        if !app.is_plugin_added::<TabNavigationPlugin>() {
-            app.add_plugins(TabNavigationPlugin);
-        }
         if !app.is_plugin_added::<DirectionalNavigationPlugin>() {
             app.add_plugins(DirectionalNavigationPlugin);
         }
@@ -92,6 +101,45 @@ impl Plugin for FocusPlugin {
                 Update,
                 (navigate, draw_focus_ring, scroll_focus_into_view).chain(),
             );
+    }
+
+    // In `finish`, so plugins added after this one (feathers) are seen too.
+    fn finish(&self, app: &mut App) {
+        if !app.is_plugin_added::<TabNavigationPlugin>() {
+            app.add_observer(tab_navigation);
+        }
+    }
+}
+
+/// Tab / Shift+Tab: Bevy's `handle_tab_navigation`, under [`UiNavigation`]'s rules and
+/// without its warnings (a screen with no focusable widgets is normal in a game).
+fn tab_navigation(
+    mut event: On<FocusedInput<KeyboardInput>>,
+    settings: Res<UiNavigation>,
+    nav: TabNavigation,
+    mut focus: ResMut<InputFocus>,
+    visible: Option<ResMut<InputFocusVisible>>,
+    keys: Option<Res<ButtonInput<KeyCode>>>,
+) {
+    let key = &event.input;
+    if key.key_code != KeyCode::Tab || key.state != ButtonState::Pressed || key.repeat {
+        return;
+    }
+    if !settings.enabled || (focus.get().is_none() && !settings.start_from_nothing) {
+        return;
+    }
+    let shift = keys.is_some_and(|k| k.any_pressed([KeyCode::ShiftLeft, KeyCode::ShiftRight]));
+    let action = if shift { NavAction::Previous } else { NavAction::Next };
+    // Focus outside any group (a widget the app spawned on its own) still moves on.
+    let (Ok(next) | Err(TabNavigationError::NoTabGroupForCurrentFocus { new_focus: next, .. })) =
+        nav.navigate(&focus, action)
+    else {
+        return;
+    };
+    event.propagate(false);
+    focus.set(next, FocusCause::Navigated);
+    if let Some(mut visible) = visible {
+        visible.0 = true;
     }
 }
 
