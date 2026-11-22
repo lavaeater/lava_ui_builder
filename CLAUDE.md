@@ -98,7 +98,7 @@ hosts send `ShowCrawl` / `AdvanceCrawl` / `ClearCrawls` and read `CrawlFinished`
 `Time<Real>`. Text colours come from `LavaTheme.text` as plain `TextColor` (not tokens,
 because the crawl fades them). `CrawlProgress` is the pure timing state, unit-tested;
 `tests/crawl.rs` drives the plugin headless. `CrawlSpec` is serde-able behind the
-`serde` feature. `cargo run --example crawl` to see it.
+`serde` feature. Voice: `CrawlSpec::voice` (a clip path per line); the crawl plays no audio but writes `CrawlLineReached` per line, and the host's `CrawlQueue::set_voice_busy` holds the next voiced scroll line at the reading point / a typewriter auto-turn while a clip speaks (`line_marks`, set in `draw_scroll`). `cargo run --example crawl` to see it.
 
 ### `systems.rs`
 `LavaUiPlugin` (defined in `lib.rs`) registers:

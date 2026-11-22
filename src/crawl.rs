@@ -18,6 +18,13 @@
 //! }));
 //! ```
 //!
+//! **Voice.** [`CrawlSpec::voice`] names a clip per line. The crawl plays no audio: it
+//! reports [`CrawlLineReached`] as each line reaches the reading point (a scroll) or comes
+//! up (a typewriter page), and the host plays the clip. While the host says a clip is
+//! still speaking ([`CrawlQueue::set_voice_busy`]), a scroll does not bring the next voiced
+//! line up, and a typewriter page does not turn by itself, so text and voice stay together
+//! whatever the screen size or speed. A host that never sets it gets no waiting.
+//!
 //! Crawls run on `Time<Real>`, so a host that pauses `Time<Virtual>` while a crawl is up
 //! (see [`CrawlSpec::modal`]) still sees it play. Colours and the font come from
 //! [`LavaTheme`]'s text theme (title = header colour, body = label colour), read every
@@ -42,6 +49,9 @@ pub const MAX_TILT: f32 = 4.0;
 const TOP_FADE: f32 = 0.2;
 /// Gap between paragraphs, in logical pixels at scale 1.
 const PARAGRAPH_GAP: f32 = 24.0;
+/// A scroll line is reached when its bottom edge has risen this fraction of the screen
+/// height past the bottom (flat depth, before the tilt).
+const READ_AT: f32 = 0.12;
 /// Draws over everything else the host has on screen.
 const CRAWL_Z: i32 = 900;
 const BOX_BG: Color = Color::srgba(0.03, 0.04, 0.07, 0.92);
@@ -97,6 +107,10 @@ pub struct CrawlSpec {
     /// A hint to the host that the crawl should hold up the game (pause, close input).
     /// The crawl itself does nothing with it; read it through [`CrawlQueue::active`].
     pub modal: bool,
+    /// A clip per line, in the order of `lines` (inside the host's assets folder). Empty
+    /// = none for that line; missing at the end = none. See the module docs.
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Vec::is_empty"))]
+    pub voice: Vec<String>,
 }
 
 impl Default for CrawlSpec {
@@ -113,6 +127,7 @@ impl Default for CrawlSpec {
             auto_advance: 0.0,
             hint: String::new(),
             modal: true,
+            voice: Vec::new(),
         }
     }
 }
@@ -121,6 +136,14 @@ impl CrawlSpec {
     /// Characters on typewriter page `page` (0 past the end).
     fn page_len(&self, page: usize) -> usize {
         self.lines.get(page).map_or(0, |line| line.chars().count())
+    }
+
+    /// The clip for line `line`, if it has one.
+    pub fn voice_for(&self, line: usize) -> Option<&str> {
+        self.voice
+            .get(line)
+            .map(String::as_str)
+            .filter(|path| !path.is_empty())
     }
 
     fn tilt(&self) -> f32 {
@@ -152,11 +175,21 @@ pub struct CrawlFinished {
     pub skipped: bool,
 }
 
+/// A line of the crawl on screen came up: scrolled to the reading point, or its
+/// typewriter page shown. `line` indexes [`CrawlSpec::lines`]; `voice` is its clip.
+#[derive(Message, Clone, Debug, PartialEq, Eq)]
+pub struct CrawlLineReached {
+    pub id: String,
+    pub line: usize,
+    pub voice: Option<String>,
+}
+
 /// The crawl on screen and the ones waiting behind it.
 #[derive(Resource, Debug, Default)]
 pub struct CrawlQueue {
     active: Option<ActiveCrawl>,
     pending: VecDeque<CrawlSpec>,
+    voice_busy: bool,
 }
 
 #[derive(Debug)]
@@ -181,6 +214,19 @@ impl CrawlQueue {
     /// A crawl is showing or waiting to.
     pub fn is_busy(&self) -> bool {
         self.active.is_some() || !self.pending.is_empty()
+    }
+
+    /// The crawl on screen is fading out (done or skipped): a host stops its voice here.
+    pub fn is_closing(&self) -> bool {
+        self.active
+            .as_ref()
+            .is_some_and(|a| a.progress.closing.is_some())
+    }
+
+    /// The host is still playing a line's clip: hold the next voiced line back. Cleared
+    /// whenever a new crawl starts.
+    pub fn set_voice_busy(&mut self, busy: bool) {
+        self.voice_busy = busy;
     }
 
     /// The crawl on screen -- or, between crawls, the next in line -- holds up the game
@@ -213,6 +259,13 @@ pub struct CrawlProgress {
     /// `Some(seconds)` once fading out.
     pub closing: Option<f32>,
     pub skipped: bool,
+    /// Scroll: the `scroll` at which each of [`CrawlSpec::lines`] reaches the reading
+    /// point. Known once the text has been laid out.
+    pub line_marks: Vec<f32>,
+    /// The next line to report as reached.
+    pub next_line: usize,
+    /// The line [`tick`](Self::tick) reached, if any (one per tick at most).
+    pub reached: Option<usize>,
 }
 
 impl CrawlProgress {
@@ -274,15 +327,34 @@ impl CrawlProgress {
     }
 
     /// Move time on by `dt` real seconds. Returns true once the crawl has faded out.
-    pub fn tick(&mut self, dt: f32, spec: &CrawlSpec) -> bool {
+    /// `voice_busy`: the host is still playing a line's clip (see the module docs).
+    pub fn tick(&mut self, dt: f32, spec: &CrawlSpec, voice_busy: bool) -> bool {
         self.elapsed += dt;
+        self.reached = None;
         if let Some(t) = &mut self.closing {
             *t += dt;
             return *t >= FADE_OUT_SECS;
         }
         match spec.style {
             CrawlStyle::Scroll { .. } => {
-                self.scroll += spec.speed * dt;
+                let mut scroll = self.scroll + spec.speed * dt;
+                if let Some(&mark) = self.line_marks.get(self.next_line)
+                    && scroll >= mark
+                {
+                    if voice_busy && spec.voice_for(self.next_line).is_some() {
+                        // Wait at the reading point for the clip before to end.
+                        scroll = mark.max(self.scroll);
+                    } else {
+                        self.reached = Some(self.next_line);
+                        self.next_line += 1;
+                        // The next line waits for the next tick, when the host has had
+                        // the chance to say its clip started.
+                        if let Some(&next) = self.line_marks.get(self.next_line) {
+                            scroll = scroll.min(next);
+                        }
+                    }
+                }
+                self.scroll = scroll;
                 if self.scroll_end.is_some_and(|end| self.scroll >= end) {
                     self.close(false);
                 }
@@ -290,8 +362,16 @@ impl CrawlProgress {
             CrawlStyle::Typewriter => {
                 if spec.lines.is_empty() {
                     self.close(false);
-                } else if self.page_complete(spec) {
-                    self.page_done_for += dt;
+                    return false;
+                }
+                if self.next_line <= self.page {
+                    self.reached = Some(self.page);
+                    self.next_line = self.page + 1;
+                }
+                if self.page_complete(spec) {
+                    if !voice_busy {
+                        self.page_done_for += dt;
+                    }
                     if spec.auto_advance > 0.0 && self.page_done_for >= spec.auto_advance {
                         self.turn_page(spec);
                     }
@@ -347,6 +427,7 @@ impl Plugin for CrawlPlugin {
             .add_message::<AdvanceCrawl>()
             .add_message::<ClearCrawls>()
             .add_message::<CrawlFinished>()
+            .add_message::<CrawlLineReached>()
             .add_systems(
                 Update,
                 (
@@ -357,10 +438,16 @@ impl Plugin for CrawlPlugin {
                     draw_scroll,
                     draw_typewriter,
                 )
-                    .chain(),
+                    .chain()
+                    .in_set(CrawlSystems),
             );
     }
 }
+
+/// The crawl's systems, for a host to order its own after (e.g. to read
+/// [`CrawlLineReached`] the frame it is written).
+#[derive(SystemSet, Debug, Clone, PartialEq, Eq, Hash)]
+pub struct CrawlSystems;
 
 /// The root of a crawl on screen.
 #[derive(Component, Debug)]
@@ -420,6 +507,7 @@ fn start_next_crawl(
         CrawlStyle::Scroll { .. } => spawn_scroll(&mut commands, &spec, &theme),
         CrawlStyle::Typewriter => spawn_typewriter(&mut commands, &spec, &theme),
     };
+    queue.voice_busy = false;
     queue.active = Some(ActiveCrawl {
         spec,
         progress: CrawlProgress::default(),
@@ -583,16 +671,26 @@ fn tick_crawl(
     mut advance: MessageReader<AdvanceCrawl>,
     mut queue: ResMut<CrawlQueue>,
     mut finished: MessageWriter<CrawlFinished>,
+    mut reached: MessageWriter<CrawlLineReached>,
     mut commands: Commands,
 ) {
     let advances = advance.read().count();
+    let busy = queue.voice_busy;
     let Some(active) = queue.active.as_mut() else {
         return;
     };
     for _ in 0..advances {
         active.progress.advance(&active.spec);
     }
-    if !active.progress.tick(time.delta_secs(), &active.spec) {
+    let done = active.progress.tick(time.delta_secs(), &active.spec, busy);
+    if let Some(line) = active.progress.reached {
+        reached.write(CrawlLineReached {
+            id: active.spec.id.clone(),
+            line,
+            voice: active.spec.voice_for(line).map(str::to_owned),
+        });
+    }
+    if !done {
         return;
     }
     commands.entity(active.root).despawn();
@@ -652,6 +750,15 @@ fn draw_scroll(
     }
     let content = (top - PARAGRAPH_GAP).max(0.0);
     active.progress.scroll_end = Some(content + exit_depth(height, tilt));
+    // Where each of the spec's lines (not the title) reaches the reading point.
+    let skip = usize::from(!active.spec.title.is_empty());
+    active.progress.line_marks.clear();
+    active.progress.line_marks.extend(
+        tops.iter()
+            .zip(heights.iter())
+            .skip(skip)
+            .map(|(top, (_, h))| top + h + height * READ_AT),
+    );
 
     let theme = theme.map_or_default(|t| t.clone());
     let offset = active.progress.scroll;
@@ -773,9 +880,9 @@ mod tests {
     fn a_typewriter_types_at_its_speed() {
         let spec = typewriter(&["abcdefghij"]);
         let mut p = CrawlProgress::default();
-        p.tick(0.5, &spec);
+        p.tick(0.5, &spec, false);
         assert_eq!(p.visible_chars(&spec), 5);
-        p.tick(0.6, &spec);
+        p.tick(0.6, &spec, false);
         assert_eq!(p.visible_chars(&spec), 10);
         assert!(p.page_complete(&spec));
     }
@@ -812,10 +919,10 @@ mod tests {
         let mut spec = typewriter(&["ab", "cd"]);
         spec.auto_advance = 1.0;
         let mut p = CrawlProgress::default();
-        p.tick(0.3, &spec); // typed
-        p.tick(0.5, &spec);
+        p.tick(0.3, &spec, false); // typed
+        p.tick(0.5, &spec, false);
         assert_eq!(p.page, 0);
-        p.tick(0.6, &spec);
+        p.tick(0.6, &spec, false);
         assert_eq!(p.page, 1);
     }
 
@@ -826,13 +933,13 @@ mod tests {
             ..CrawlSpec::default()
         };
         let mut p = CrawlProgress::default();
-        assert!(!p.tick(5.0, &spec), "no end known yet: keeps rolling");
+        assert!(!p.tick(5.0, &spec, false), "no end known yet: keeps rolling");
         assert!(p.closing.is_none());
         p.scroll_end = Some(600.0);
-        p.tick(1.0, &spec);
+        p.tick(1.0, &spec, false);
         assert!(p.closing.is_some());
-        assert!(!p.tick(FADE_OUT_SECS / 2.0, &spec));
-        assert!(p.tick(FADE_OUT_SECS, &spec));
+        assert!(!p.tick(FADE_OUT_SECS / 2.0, &spec, false));
+        assert!(p.tick(FADE_OUT_SECS, &spec, false));
     }
 
     #[test]
@@ -849,6 +956,75 @@ mod tests {
         let mut p = shown();
         p.advance(&fixed);
         assert!(p.closing.is_none());
+    }
+
+    fn voiced_scroll() -> CrawlSpec {
+        CrawlSpec {
+            lines: vec!["one".into(), "two".into(), String::new()],
+            voice: vec!["one.ogg".into(), "two.ogg".into()],
+            speed: 100.0,
+            ..CrawlSpec::default()
+        }
+    }
+
+    #[test]
+    fn a_scroll_reaches_each_line_once_and_one_per_tick() {
+        let spec = voiced_scroll();
+        let mut p = CrawlProgress {
+            line_marks: vec![50.0, 60.0, 70.0],
+            ..CrawlProgress::default()
+        };
+        p.tick(1.0, &spec, false);
+        assert_eq!(p.reached, Some(0));
+        assert_eq!(p.scroll, 60.0, "held at the next line until the host has looked");
+        p.tick(0.0, &spec, false);
+        assert_eq!(p.reached, Some(1));
+        p.tick(0.01, &spec, false);
+        assert_eq!(p.reached, None);
+        p.tick(1.0, &spec, false);
+        assert_eq!(p.reached, Some(2));
+        p.tick(1.0, &spec, false);
+        assert_eq!(p.reached, None);
+    }
+
+    #[test]
+    fn a_busy_voice_holds_the_next_voiced_line_at_the_reading_point() {
+        let spec = voiced_scroll();
+        let mut p = CrawlProgress {
+            line_marks: vec![50.0, 60.0, 70.0],
+            ..CrawlProgress::default()
+        };
+        p.tick(1.0, &spec, false);
+        p.tick(5.0, &spec, true);
+        assert_eq!((p.reached, p.scroll), (None, 60.0), "waits for the clip");
+        p.tick(0.1, &spec, false);
+        assert_eq!(p.reached, Some(1));
+        // The blank, unvoiced line does not wait.
+        p.tick(1.0, &spec, true);
+        assert_eq!(p.reached, Some(2));
+    }
+
+    #[test]
+    fn a_typewriter_reaches_each_page_and_a_busy_voice_keeps_it_up() {
+        let mut spec = typewriter(&["ab", "cd"]);
+        spec.auto_advance = 1.0;
+        let mut p = CrawlProgress::default();
+        p.tick(0.3, &spec, true);
+        assert_eq!(p.reached, Some(0));
+        p.tick(5.0, &spec, true);
+        assert_eq!((p.page, p.reached), (0, None), "no turning while it speaks");
+        p.tick(1.1, &spec, false);
+        assert_eq!(p.page, 1);
+        p.tick(0.0, &spec, false);
+        assert_eq!(p.reached, Some(1));
+    }
+
+    #[test]
+    fn only_named_clips_count() {
+        let spec = voiced_scroll();
+        assert_eq!(spec.voice_for(1), Some("two.ogg"));
+        assert_eq!(spec.voice_for(2), None);
+        assert_eq!(spec.voice_for(9), None);
     }
 
     #[test]
