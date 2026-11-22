@@ -168,4 +168,7 @@ first `Update` (see the `Added` check in `8_scoreboard.rs`).
 - components used inside `bsn!` need `Default + Clone`, or `#[derive(FromTemplate)]` when
   they hold an `Entity` (resolved from a `#Name`) or an asset handle
 - crawls: `CrawlPlugin` owns a `CrawlQueue`; text colours are plain `TextColor` (the crawl
-  fades them), not tokens; `CrawlProgress` is the unit-tested timing core
+  fades them), not tokens; `CrawlProgress` is the unit-tested timing core. Voice:
+  `CrawlSpec::voice` is a clip path per line; the crawl plays no audio but writes
+  `CrawlLineReached` per line, and the host's `CrawlQueue::set_voice_busy` holds the next
+  voiced scroll line at the reading point (or a typewriter auto-turn) while a clip speaks
