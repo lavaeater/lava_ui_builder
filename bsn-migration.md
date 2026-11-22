@@ -9,6 +9,12 @@ against the vendored sources in `~/.cargo/registry/src/*/bevy_scene-0.19.1/` and
 `examples/ui/widgets/feathers_counter.rs`. Every BSN construct proposed below was
 compiled against this crate first — see Appendix A.
 
+> **Since then (2026-11, Bevy 0.20):** the scene API grew into a game kit — themed
+> controls, bindings, screens, focus navigation, overlays, media, responsive layout — and
+> `scenes.rs` became the `scenes/` directory. This document stays the record of the
+> migration itself; `roadmap.md` covers the kit, and the bundle and builder APIs described
+> here are now frozen (kept working, no new widgets).
+
 ---
 
 ## 1. TL;DR
@@ -62,9 +68,9 @@ Facts that matter for us:
 | --- | --- |
 | **Patching** | `Node { width: px(10) }` writes *only* `width`. Later patches to the same component merge; unset fields fall back to the previous patch or `Default`. This is the whole reason our `modify_node`/`TextStyle::Option` machinery can go away. |
 | **Composition** | A `Scene`-returning function call inside `bsn!` splices its entries in place: `lava_button("Play") Node { width: px(200) }` overrides just the width. Tuples of scenes are scenes. |
-| **Children** | `Children [a, b]` = two entities; `Children [a b]` = one entity with both components. Any `RelationshipTarget` works, not just `Children`. |
+| **Children** | `Children [a -- b]` = two entities; `Children [a b]` = one entity with both components. (Pre-0.20 BSN used `[a, b]` and `(a)` grouping; both are deprecated in 0.20.) Any `RelationshipTarget` works, not just `Children`. |
 | **Dynamic content** | `{expr}` interpolates a Rust expression. `Vec<S: Scene>` implements `SceneList`, so `Children [ {rows} ]` splices a runtime-built list. |
-| **Conditionals** | `Option<S>` implements `Scene`, and `Option<L>` implements `SceneList` **only when `L` is itself a `SceneList`**. In a `Children [ .. ]` position an interpolated value must be a *list*, so an optional child is `cond.then(\|\| bsn_list![..])`, not `cond.then(\|\| bsn!{..})`. |
+| **Conditionals** | `Option<S>` implements `Scene`, and `Option<L>` implements `SceneList` **only when `L` is itself a `SceneList`**. In a `Children [ .. ]` position an interpolated value must be a *list*, so an optional child is `cond.then(\|\| bsn_list! {..})`, not `cond.then(\|\| bsn!{..})`. |
 | **Observers** | `on(|ev: On<Activate>, ..| { .. })` attaches an entity observer. **The system must be `Clone`** (`OnTemplate` is `impl<I: IntoObserverSystem<..> + Clone>`, `bevy_scene-0.19.1/src/scene.rs:519`). Our current signatures take bare `impl IntoObserverSystem` — see §6. |
 | **Named entities** | `#Root` sets `Name("Root")` *and* registers the entity for reference within the same `bsn!` scope. `Component { field: #Root }` resolves to an `Entity` at spawn time, upward or downward in the tree. |
 | **Component requirements** | To appear in `bsn!` a component needs either `Default + Clone`, or `#[derive(FromTemplate)]`. `FromTemplate` is required for fields needing spawn context — `Handle<T>` (asset paths) and `Entity` (from `#Name`). Deriving both `FromTemplate` and `Default` is an error. |
@@ -187,7 +193,7 @@ In BSN the observer attaches inline, so the wrapper and the double insert both g
 
 **D6. Themes are baked at build time.** `UIBuilder::new(commands, Some(theme.clone()))`
 copies the theme into the builder and each widget reads colors out of it at spawn. Nothing
-links a spawned node back to the theme, so `examples/dark_light_theme.rs` switches themes
+links a spawned node back to the theme, so `examples/9_dark_light_theme.rs` switches themes
 by *destroying and rebuilding the entire UI* (`start_from_entity(.., clear_children: true)`).
 Feathers solves this with token components + a system that repaints on
 `resource_changed::<UiTheme>`. BSN doesn't force the change, but the migration is the
@@ -219,7 +225,7 @@ natural moment to make it (see Phase 2).
 | Today | BSN |
 | --- | --- |
 | `ui_root("Menu")` (`impl Bundle`) | `fn ui_root() -> impl Scene` |
-| `children![(a), (b)]` | `Children [ (a), (b) ]` |
+| `children![(a), (b)]` | `Children [ a -- b ]` |
 | `Children::spawn(SpawnWith(\|p\| ..))` (used only to get `.observe`) | `on(..)` inline — wrapper entity deleted |
 | `header(t, &theme.text)` / `label(..)` | `lava_header(t)` / `lava_label(t)` scene fns |
 | `TextStyle::size_color(11.0, c)` | `TextFont { font_size: px(11) } TextColor(c)` patches |
@@ -341,14 +347,14 @@ impl LavaButton {
 }
 ```
 
-Callers then write `@LavaButton { @caption: {bsn_list![Text("Play")]} }` — note the `@`
+Callers then write `@LavaButton { @caption: {bsn_list! {Text("Play")}} }` — note the `@`
 on prop names.
 
 The token half is the answer to **D6**: introduce `LavaBackground(ThemeToken)` /
 `LavaTextColor(ThemeToken)` components plus a system that repaints them on
 `resource_changed::<LavaTheme>`, mirroring `bevy_feathers::theme`. Live theme switching
 then costs one resource write instead of a full UI rebuild, and
-`examples/dark_light_theme.rs` loses its `start_from_entity` rebuild entirely.
+`examples/9_dark_light_theme.rs` loses its `start_from_entity` rebuild entirely.
 
 If that is too big a step, an intermediate version keeps `Color`s in the props and simply
 accepts that theme switches still rebuild. The scene API does not depend on the token
@@ -373,7 +379,7 @@ Children [ {show_footer.then(|| bsn! { lava_label("footer", &theme.text) })} ]
 // runtime rebuild (replaces start_from_entity(.., clear_children: true))
 commands.entity(panel)
     .despawn_related::<Children>()
-    .queue_spawn_related_scenes::<Children>(bsn_list![ /* fresh rows */ ]);
+    .queue_spawn_related_scenes::<Children>(bsn_list! { /* fresh rows */ });
 
 // patch an existing entity without rebuilding it
 commands.entity(panel).apply_scene(bsn! { Node { display: Display::None } });

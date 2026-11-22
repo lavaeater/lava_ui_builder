@@ -95,7 +95,7 @@ fn a_button_is_a_headless_button_with_a_palette_and_a_text_child() {
     // started from.
     let palette = world
         .get::<InteractionPalette>(entity)
-        .expect("ThemedPalette requires and fills an InteractionPalette");
+        .expect("the button's Variant requires and fills an InteractionPalette");
     let theme = LavaTheme::default();
     assert_eq!(palette.none, theme.button.bg);
     assert_eq!(palette.hovered, theme.button.bg_hovered);
@@ -157,12 +157,44 @@ fn a_progress_bar_sizes_its_fill_child_from_the_value() {
     );
 }
 
+/// A meter's two colours are tokens, so both follow a theme swap on the live entities.
+#[test]
+fn a_meter_takes_its_colours_from_the_theme_and_follows_a_swap() {
+    let mut app = test_app();
+    let entity = spawn(
+        &mut app,
+        scenes::meter(0.5, 100.0, 10.0, ColorToken::HealthFill),
+    );
+    let fill = app.world().get::<Children>(entity).expect("fill child")[0];
+    let colours = |app: &App| {
+        let bg = app.world().get::<BackgroundColor>(entity).map(|c| c.0);
+        let fill = app.world().get::<BackgroundColor>(fill).map(|c| c.0);
+        (bg, fill)
+    };
+
+    let default = LavaTheme::default().meter;
+    assert_eq!(colours(&app), (Some(default.bg), Some(default.health)));
+    assert_eq!(
+        app.world().get::<Node>(fill).map(|n| n.width),
+        Some(Val::Percent(50.0))
+    );
+
+    let (bg, health) = (Color::srgb(0.1, 0.2, 0.3), Color::srgb(0.9, 0.5, 0.1));
+    let mut theme = LavaTheme::default();
+    theme.meter.bg = bg;
+    theme.meter.health = health;
+    app.world_mut().insert_resource(theme);
+    app.update();
+
+    assert_eq!(colours(&app), (Some(bg), Some(health)));
+}
+
 #[test]
 fn a_collapsible_resolves_its_name_references_to_the_section_entity() {
     let mut app = test_app();
     let section = spawn(
         &mut app,
-        scenes::collapsible("Details", false, bsn_list![@scenes::label("inner")]),
+        scenes::collapsible("Details", false, bsn_list! { @scenes::label("inner") }),
     );
 
     let world = app.world();
@@ -185,7 +217,7 @@ fn a_collapsible_resolves_its_name_references_to_the_section_entity() {
 #[test]
 fn a_collapsed_section_hides_its_content_and_shows_the_collapsed_arrow() {
     let mut app = test_app();
-    let section = spawn(&mut app, scenes::collapsible("Details", true, bsn_list![]));
+    let section = spawn(&mut app, scenes::collapsible("Details", true, bsn_list! {  }));
 
     let world = app.world();
     let children = world.get::<Children>(section).unwrap();
@@ -214,12 +246,9 @@ fn a_selected_list_item_uses_the_selected_palette() {
         a.none, b.none,
         "selection has to be visible without hovering"
     );
-    // Not theme-driven: the token system must leave these alone.
-    assert!(
-        world
-            .get::<lava_ui_builder::ThemedPalette>(unselected)
-            .is_none()
-    );
+    // Themed through a variant and Bevy's `Selected` marker, not a fixed palette.
+    assert!(world.get::<lava_ui_builder::Variant>(unselected).is_some());
+    assert!(world.get::<bevy::ui::Selected>(selected).is_some());
 }
 
 #[test]
@@ -259,7 +288,7 @@ fn replace_children_swaps_the_contents_and_keeps_the_parent() {
         &mut app,
         bsn! {
             @scenes::column(2.0)
-            Children [ @scenes::label("old a"), @scenes::label("old b") ]
+            Children [ @scenes::label("old a") -- @scenes::label("old b") ]
         },
     );
     assert_eq!(app.world().get::<Children>(parent).unwrap().len(), 2);
@@ -268,11 +297,13 @@ fn replace_children_swaps_the_contents_and_keeps_the_parent() {
     scenes::replace_children(
         &mut commands,
         parent,
-        bsn_list![
-            @scenes::label("new a"),
-            @scenes::label("new b"),
-            @scenes::label("new c"),
-        ],
+        bsn_list! {
+            @scenes::label("new a")
+            --
+            @scenes::label("new b")
+            --
+            @scenes::label("new c")
+        },
     );
     app.update();
 
@@ -290,7 +321,8 @@ fn replace_children_swaps_the_contents_and_keeps_the_parent() {
 }
 
 /// A themed widget cannot be recoloured by patching, because the token system repaints
-/// it; `button_colored` is the escape hatch, and it must not carry the token at all.
+/// it; `button_colored` is the escape hatch, and it must carry neither a token nor a
+/// variant.
 #[test]
 fn a_coloured_button_is_not_repainted_by_the_theme() {
     let mut app = test_app();
@@ -307,6 +339,7 @@ fn a_coloured_button_is_not_repainted_by_the_theme() {
             .get::<lava_ui_builder::ThemedPalette>(entity)
             .is_none()
     );
+    assert!(world.get::<lava_ui_builder::Variant>(entity).is_none());
     assert_eq!(world.get::<InteractionPalette>(entity).unwrap().none, red);
 }
 
@@ -314,6 +347,10 @@ fn a_coloured_button_is_not_repainted_by_the_theme() {
 /// `bevy_ui::widget::Button`, which requires `Interaction` and not `Hovered` -- must keep
 /// working rather than silently going flat.
 #[test]
+#[expect(
+    deprecated,
+    reason = "this test exists to cover the deprecated `Interaction` fallback"
+)]
 fn the_palette_still_honours_the_legacy_interaction_component() {
     let mut app = test_app();
     app.add_systems(Update, lava_ui_builder::systems::apply_interaction_palette);

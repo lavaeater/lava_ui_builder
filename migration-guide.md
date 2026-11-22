@@ -21,8 +21,8 @@ one tree is supported and expected — §3 has the bridge.
 
 ## 1. Mandatory: what breaks on the version bump
 
-Four things. Two are compile errors (loud), two are behavioural (silent — these are the
-dangerous ones).
+Four things for every consumer (two compile errors, two silent behaviour changes — the
+dangerous ones), plus §1.5 for code already on the scene API.
 
 ### 1.1 `systems::handle_collapse_toggle` no longer exists — compile error
 
@@ -89,7 +89,7 @@ for (btn, mut palette) in &mut buttons {
 ```
 
 Where `SELECTED_PALETTE` is a `const InteractionPalette { none, hovered, pressed }`.
-`examples/game_menu.rs` in the library is a worked example of exactly this change.
+`examples/1_game_menu.rs` in the library is a worked example of exactly this change.
 
 If an entity must keep a hand-painted background, remove its `InteractionPalette`.
 
@@ -104,6 +104,38 @@ grep -rn 'lava_ui_builder.*feathers' Cargo.toml
 
 Remove `features = ["feathers"]` from the dependency line if present. The feathers helpers
 (`feathers_button`, `feathers_button_primary`, …) still compile unconditionally.
+
+### 1.5 Scene-API changes from the game-kit round (2026-11) — only if you use `scenes::`
+
+The bundle and builder APIs are untouched by this round. Code on the scene API may hit:
+
+* **`scenes::side_panel(width, bg)` is now `side_panel(width)`** — compile error. The
+  background is the theme's `PanelBg` token; patch `ThemedBackground(..)` for another.
+* **`scenes::button` is `min_width: 150` instead of `width: 150`** — it grows to fit its
+  caption, and stretches inside a `scenes::card`. Patch `Node { width: px(150) }` back if
+  a layout depended on the fixed width.
+* **`button`, `list_item`, `icon_button`, `delete_button` and `section_label` are themed
+  now.** Their colours come from `LavaTheme` (button variants, `surface.text_muted`)
+  instead of constants, so they look different with a custom theme and follow theme
+  swaps. A `scenes::button` carries a `Variant` instead of a `ThemedPalette`; code that
+  queried `ThemedPalette` on buttons should query `Variant`.
+* **Lava widgets are focusable and the arrow keys / D-pad move focus between them.**
+  `LavaUiPlugin` now adds Bevy's `DirectionalNavigationPlugin` (unless already added),
+  handles Tab / Shift+Tab itself and draws a focus ring. Navigation, Tab included, only
+  *moves* existing focus by default, so a game steering with the arrows or binding Tab to
+  something else is unaffected until a widget has focus; turn it off entirely with
+  `UiNavigation { enabled: false, .. }`. Escape / gamepad B trigger `NavigateBack`, which
+  does nothing unless you registered `screen_back`.
+* **`ui_root`, `screen`, `backdrop`, `fullscreen` and `anchored` carry a `TabGroup`**, and
+  a `confirm` dialog a modal one. Bevy's `TabNavigationPlugin` is *not* added any more:
+  it warned "No tab groups found" on every Tab press and grabbed focus from nothing. If
+  your app adds it itself (or adds feathers, which does), lava leaves Tab to it.
+* **Gamepad A activates the focused widget**, and the pointer shows a tooltip for entities
+  with `Tooltip`.
+
+```bash
+grep -rn 'scenes::side_panel\|ThemedPalette' src/
+```
 
 ---
 
@@ -122,6 +154,30 @@ even though they are fixes:
   back to `Interaction`, so entities built with `bevy_ui::widget::Button` keep working.
 * **Collapsible toggles respond to ENTER/SPACE** when focused, and work regardless of how
   they were spawned.
+* **`WorldFollower` sets `PositionType::Absolute` itself.** Code that patched the
+  follower's `Node` afterwards (aliens-vs-suburbia's revive bar does, in
+  `death_revive.rs`) still works, but the patch can be deleted.
+* **New, opt-in: themed meters.** `LavaTheme.meter: MeterTheme { bg, fill, health }`,
+  tokens `ColorToken::{MeterBg, MeterFill, HealthFill}`, and
+  `scenes::meter(value, w, h, fill_token)`: a `progress_bar` whose colours follow the
+  theme. Existing `progress_bar(.., Color, Color)` calls are unchanged; switch the ones
+  whose colours are theme rather than meaning. A theme built with `..LavaTheme::default()`
+  needs no change.
+* **New, opt-in: the game-kit layer** (see `roadmap.md` and the README tour). None of it
+  needs a change to existing code:
+  * theme roles `LavaTheme.surface` / `.controls`, button `Variant`s, `title`/`small`
+    font sizes, presets `LavaTheme::{dark, light, from_accent}`;
+  * bindings (`app.bind_resource::<R>()` + `@scenes::bind_text(..)` and friends) that
+    replace hand-written sync systems;
+  * state-driven screens (`app.add_screen(..)`, `go_to`, `Back`, `screen_back`);
+  * themed controls on Bevy's headless widgets: `slider`, `checkbox`, `toggle`,
+    `choice`, `cycle`, `select`, `text_input`, `text_area`;
+  * tooltips, toasts, `confirm` dialogs, drag and drop, images / nine-slice skins,
+    `Responsive` layout, HUD `anchored` corners, `table`, `card`, `screen`.
+* **New theme fields** (`surface`, `controls`, `button.secondary` .. `button.disabled`,
+  `text.title_size`, `text.small_size`) have defaults; themes built with
+  `..LavaTheme::default()` or `..t.clone()` need no change. `InteractionPalette` keeps
+  exactly its three fields.
 
 ---
 
@@ -146,17 +202,18 @@ ui.with_child(|c| {
     c.apply_scene(scenes::button("Play"));      // patch a scene onto this entity
 });
 ui.scene_child(scenes::label("hello"));          // spawn a scene as a child
-ui.scene_children(bsn_list![ /* … */ ]);         // … or a whole list
+ui.scene_children(bsn_list! { /* … */ });         // … or a whole list
 ```
 
 And a scene tree can be rebuilt in place, replacing
 `UIBuilder::start_from_entity(.., clear_children: true)`:
 
 ```rust
-scenes::replace_children(&mut commands, list_root, bsn_list![
-    scenes::list_item("one", false),
-    scenes::list_item("two", true),
-]);
+scenes::replace_children(&mut commands, list_root, bsn_list! {
+    @scenes::list_item("one", false)
+    --
+    @scenes::list_item("two", true)
+});
 ```
 
 The parent entity survives, so stored `Entity` ids, marker queries and `ScrollPosition` all
@@ -168,17 +225,17 @@ the same frame), so a system cannot rebuild a list and query the result in the s
 | Imperative / bundle | Scene |
 | --- | --- |
 | `UIBuilder::new(commands, theme)` + `set_node` | `commands.spawn_scene(bsn! { … })` |
-| `.with_child(\|c\| { … })` nesting | `Children [ ( … ) ]` |
+| `.with_child(\|c\| { … })` nesting | `Children [ … -- … ]` (`--` between entities) |
 | `.foreach_child(items, …)` | `Children [ {items.map(…).collect::<Vec<_>>()} ]` |
-| `if cond { ui.with_child(…) }` | `Children [ {cond.then(\|\| bsn_list![…])} ]` |
-| `.add_button_observe(text, cfg, handler)` | `scenes::button(text) on(handler)` |
+| `if cond { ui.with_child(…) }` | `Children [ {cond.then(\|\| bsn_list! {…})} ]` |
+| `.add_button_observe(text, cfg, handler)` | `@scenes::button(text) on(handler)` |
 | `ButtonBuilder::size_px(w, h)` | `Node { width: px(w), height: px(h) }` patch |
 | `.with_text(t, Some(TextStyle::size_color(s, c)))` | `scenes::text(t, s, c)` |
 | themed label/header | `scenes::label(t)` / `scenes::header(t)` (no theme argument) |
 | `.add_row(…)` / `.add_column(…)` | `scenes::row(gap)` / `scenes::column(gap)` + `Children` |
 | `.scrollable_list(…)` | `scenes::scrollable_list(gap)` |
 | `.list_item(name, selected, h)` | `scenes::list_item(name, selected) on(h)` |
-| `.with_collapsible(label, collapsed, …)` | `scenes::collapsible(label, collapsed, bsn_list![…])` |
+| `.with_collapsible(label, collapsed, …)` | `scenes::collapsible(label, collapsed, bsn_list! {…})` |
 | `progress_bar(v, w, h, fill, bg)` bundle | `scenes::progress_bar(v, w, h, fill, bg)` |
 | a startup system building UI from queries | same system, ending in `commands.spawn_scene(…)` |
 | a UI with no world data | `fn ui() -> impl Scene` + `.add_systems(Startup, ui.spawn())` |
@@ -208,7 +265,7 @@ scenes::text("danger", 16.0, Color::RED)                          // works — u
    `Clone`-friendly in practice; capture `&'static str` or `Copy` data, or build the
    closure in a factory function (`fn press(what: &'static str) -> impl Fn(..) + Clone`).
 2. **An optional child is `Option<impl SceneList>`, not `Option<impl Scene>`.** A
-   `Children [..]` slot interpolates a *list*: `cond.then(|| bsn_list![..])`. Getting this
+   `Children [..]` slot interpolates a *list*: `cond.then(|| bsn_list! {..})`. Getting this
    wrong produces a confusing `SceneList is not implemented for impl Scene` error.
 3. **Components used in `bsn!` need `Default + Clone`**, or `#[derive(FromTemplate)]` when
    they hold an `Entity` or an asset handle. Marker components need
@@ -255,7 +312,7 @@ Then check by hand, because none of the above catches §1.3:
 * collapsible sections open and close, including via keyboard;
 * if the project switches themes at runtime, that it still works — and if it rebuilds the
   UI to do so, note that tokens make the rebuild unnecessary (see
-  `examples/dark_light_theme.rs` in the library).
+  `examples/9_dark_light_theme.rs` in the library).
 
 ## 5. Reference
 
@@ -283,8 +340,8 @@ FontToken::  Header | Label | Button
 ```
 
 Worked examples in the library, roughly in order of complexity: `bsn_layout` (smallest),
-`buttons` (observers, patching, `@FeathersButton`), `scoreboard` (data-driven rows),
-`game_menu` (panels, selection-as-palette), `dark_light_theme` (live theming),
-`hud` (corner anchoring, marker-driven systems), `inventory` (inline drag/drop observers),
+`buttons` (observers, patching, `@FeathersButton`), `8_scoreboard` (data-driven rows),
+`1_game_menu` (panels, selection-as-palette), `9_dark_light_theme` (live theming),
+`6_hud` (corner anchoring, marker-driven systems), `2_inventory` (inline drag/drop observers),
 `complex_example` (collapsibles, scrolling, `replace_children`). `basic_layout` is
 deliberately left on the old APIs as the unmigrated reference.
